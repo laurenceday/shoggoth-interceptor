@@ -56,3 +56,17 @@ of scope while the bind is 127.0.0.1), and the link guard renders no anchor at
 all for a non-GitHub URL.
 
 Leads not pursued: none
+
+## Step 4, round 1 — 2026-08-19
+
+Suite: waived (no Solidity); bundled lints ran per the non-Solidity rule.
+
+| id | severity | file | finding | status |
+| --- | --- | --- | --- | --- |
+
+Findings: 0. phylax, ephoros, hypomnema all exit 0. The step ships demo
+evidence and a launch config only; no new code surface. The demo itself
+exercised refresh, detail, exclude, and archive against the live server with
+the results recorded in deliverables/console-demo/.
+
+Leads not pursued: none
