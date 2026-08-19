@@ -1,4 +1,4 @@
-# Console demo transcript — loop 1 (#789)
+# Console demo transcript: loop 1 (#789)
 
 Operated live in the Claude Code browser pane on 2026-08-19, server started via
 `python3 bin/console.py` (launch config `.claude/launch.json`, port 8737).
@@ -11,7 +11,7 @@ Operated live in the Claude Code browser pane on 2026-08-19, server started via
   subprocesses ran to completion; the header age dropped from "board 39m ·
   pipelines 25m" to "board 4s · pipelines 0s".
 - Opened ticket detail for #761, #727 (its comment "Not important for now,
-  iceboxed." renders — useful ranking signal), and #789. Body, acceptance
+  iceboxed." renders, useful ranking signal), and #789. Body, acceptance
   criteria, author, pipeline, and GitHub link all render as text.
 - Expanded loop-1-ranking-scoped.md in the rankings panel; the winner line
   (#789 at 86/100) is readable in the page.
