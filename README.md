@@ -6,13 +6,13 @@ locally, exclude it, repeat. The loop protocol is in [CLAUDE.md](CLAUDE.md).
 
 ## Pieces
 
-- `bin/shoggoth.py` — board reader: `fetch`, `fetch-pipelines`, `roster`,
-  `show <n>`, `exclude <n> <reason>`, `excluded`.
-- `bin/console.py` — the operator console (see below).
-- `bin/archive.sh` — rolling archive zip of scratchpads, deliverables, state.
-- `state/` — board cache, pipeline map, exclusion list.
-- `deliverables/` — per-ticket outputs an operator attaches to issues by hand.
-- `docs/console-study.md`, `docs/console-runbook.md` — the console's spec.
+- `bin/shoggoth.py`: board reader with `fetch`, `fetch-pipelines`, `roster`,
+  `show <n>`, `exclude <n> <reason>`, and `excluded` subcommands.
+- `bin/console.py`: the operator console (see below).
+- `bin/archive.sh`: rolling archive zip of scratchpads, deliverables, state.
+- `state/`: board cache, pipeline map, exclusion list.
+- `deliverables/`: per-ticket outputs an operator attaches to issues by hand.
+- `docs/console-study.md` and `docs/console-runbook.md`: the console's spec.
 
 ## Operator console
 
