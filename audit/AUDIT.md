@@ -90,3 +90,17 @@ custom-header preflight guard.
 Leads not pursued: a launched session inherits the operator's environment
 by design (it needs the board keys and gh to work a loop); accepted and
 documented in the shipped spec.
+
+## Step 2, round 1 — 2026-08-19
+
+Suite: waived (no Solidity); bundled lints ran (all exit 0); 25 tests green.
+
+| id | severity | file | finding | status |
+| --- | --- | --- | --- | --- |
+
+Findings: 0. The step ships demo evidence only. The smoke launch itself ran
+end to end from the page: spawn, pidfile, running status in /api/loops, the
+expected SHOGGOTH-SMOKE-OK marker in the log, and the finished status
+surviving a server restart.
+
+Leads not pursued: none
