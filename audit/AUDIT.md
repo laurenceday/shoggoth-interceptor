@@ -70,3 +70,23 @@ exercised refresh, detail, exclude, and archive against the live server with
 the results recorded in deliverables/console-demo/.
 
 Leads not pursued: none
+
+# Run: console loop launcher
+
+## Step 1, round 1 — 2026-08-19
+
+Suite: waived (no Solidity); bundled lints ran (all exit 0); 25 tests green.
+
+| id | severity | file | finding | status |
+| --- | --- | --- | --- | --- |
+
+Findings: 0. Manual review: only the two hard-coded prompts can be launched
+and a test proves request data never reaches argv; one-launch-at-a-time is
+enforced through pidfiles with a liveness check; spawned sessions run under
+acceptEdits so they cannot self-approve broader actions; loop logs are
+gitignored; the launch endpoint sits behind the existing Host pinning and
+custom-header preflight guard.
+
+Leads not pursued: a launched session inherits the operator's environment
+by design (it needs the board keys and gh to work a loop); accepted and
+documented in the shipped spec.
