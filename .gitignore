@@ -1,3 +1,4 @@
 work/
 state/board.json
 .env
+state/loops/

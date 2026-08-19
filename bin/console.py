@@ -156,9 +156,105 @@ class Api:
         return {"ok": code == 0, "exit": code, "output": output}
 
 
+SMOKE_PROMPT = (
+    "This is a Shoggoth Interceptor launch smoke test. Do not use any tools. "
+    "Reply with exactly SHOGGOTH-SMOKE-OK and nothing else."
+)
+LOOP_PROMPT = (
+    "Run one Shoggoth Interceptor loop for the wildcat-finance product board. "
+    "Follow CLAUDE.md in this repository exactly: refresh the board and "
+    "pipelines, rank the in-scope candidates (Icebox and Product Backlog, "
+    "tech debt only, frontend first), record the ranking in deliverables/, "
+    "run the /hexaemeron:fiat delivery on the top pick with stacked PRs left "
+    "open for review, write the deliverables summary, exclude the ticket, "
+    "and run bin/archive.sh. Then stop."
+)
+LAUNCH_MODES = {"smoke": SMOKE_PROMPT, "loop": LOOP_PROMPT}
+
+
+def pid_alive(pid: int) -> bool:
+    import os
+    try:
+        os.kill(pid, 0)
+        return True
+    except (ProcessLookupError, PermissionError, ValueError):
+        return False
+
+
+class Launcher:
+    """Spawns detached headless Claude Code sessions with fixed prompts.
+
+    Only the two hard-coded prompts above are ever launched; no request data
+    reaches the argv. One launch at a time: a live pidfile refuses the next.
+    """
+
+    def __init__(self, root: Path, spawn=None):
+        self.loops_dir = root / "state" / "loops"
+        self.spawn = spawn or self._spawn_detached
+
+    def _spawn_detached(self, argv, log_path: Path) -> int:
+        import subprocess
+        with open(log_path, "ab") as log:
+            proc = subprocess.Popen(
+                argv, stdout=log, stderr=log, stdin=subprocess.DEVNULL,
+                start_new_session=True,
+            )
+        return proc.pid
+
+    def _running(self):
+        for pidfile in sorted(self.loops_dir.glob("*.pid")):
+            try:
+                pid = int(pidfile.read_text().strip())
+            except ValueError:
+                continue
+            if pid_alive(pid):
+                return {"name": pidfile.stem, "pid": pid}
+        return None
+
+    def start(self, mode):
+        if mode not in LAUNCH_MODES:
+            return {"ok": False, "error": "mode must be 'smoke' or 'loop'"}
+        running = self._running()
+        if running:
+            return {"ok": False,
+                    "error": f"launch {running['name']} is still running"}
+        self.loops_dir.mkdir(parents=True, exist_ok=True)
+        from datetime import datetime, timezone
+        name = f"{mode}-{datetime.now(timezone.utc).strftime('%Y%m%d-%H%M%S')}"
+        log_path = self.loops_dir / f"{name}.log"
+        argv = ["claude", "-p", LAUNCH_MODES[mode],
+                "--permission-mode", "acceptEdits"]
+        pid = self.spawn(argv, log_path)
+        (self.loops_dir / f"{name}.pid").write_text(str(pid))
+        print(f"launched {name} (pid {pid}) -> {log_path}", file=sys.stderr)
+        return {"ok": True, "name": name, "pid": pid,
+                "log": f"state/loops/{name}.log"}
+
+    def list(self):
+        launches = []
+        if not self.loops_dir.is_dir():
+            return launches
+        for log_path in sorted(self.loops_dir.glob("*.log"), reverse=True):
+            pidfile = log_path.with_suffix(".pid")
+            pid = None
+            if pidfile.exists():
+                try:
+                    pid = int(pidfile.read_text().strip())
+                except ValueError:
+                    pid = None
+            text = log_path.read_text(errors="replace")
+            launches.append({
+                "name": log_path.stem,
+                "running": bool(pid and pid_alive(pid)),
+                "log_tail": text[-2000:],
+            })
+        return launches
+
+
 class Handler(BaseHTTPRequestHandler):
     server_version = "ShoggothConsole/1"
     api: Api = None  # set by serve()
+    launcher: "Launcher" = None  # set by serve()
 
     def _send_json(self, payload, status=200):
         body = json.dumps(payload, indent=1).encode()
@@ -190,6 +286,12 @@ class Handler(BaseHTTPRequestHandler):
             return self._send_json(self.api.refresh())
         if path == "/api/archive":
             return self._send_json(self.api.archive())
+        if path == "/api/start-loop":
+            body = self._read_body()
+            if body is None:
+                return self._send_json({"error": "bad body"}, 400)
+            result = self.launcher.start(body.get("mode", "loop"))
+            return self._send_json(result, 200 if result["ok"] else 409)
         if path == "/api/exclude":
             body = self._read_body()
             if body is None:
@@ -224,6 +326,8 @@ class Handler(BaseHTTPRequestHandler):
             return
         if path == "/api/health":
             return self._send_json(api.health())
+        if path == "/api/loops":
+            return self._send_json(self.launcher.list())
         if path == "/api/roster":
             return self._send_json(api.roster())
         if path == "/api/rankings":
@@ -244,6 +348,7 @@ class Handler(BaseHTTPRequestHandler):
 
 def serve(port: int = DEFAULT_PORT):
     Handler.api = Api(ROOT)
+    Handler.launcher = Launcher(ROOT)
     server = ThreadingHTTPServer((BIND_HOST, port), Handler)
     print(f"shoggoth console on http://{BIND_HOST}:{port}", file=sys.stderr)
     try:
