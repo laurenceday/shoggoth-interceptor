@@ -18,5 +18,10 @@
   "number": 443,
   "reason": "loop 3 complete: shipped with #442; statement half recommended closed as superseded by exports epic (#851/#852)",
   "excluded_at": "2026-08-19T06:05:12.069915+00:00"
+ },
+ {
+  "number": 608,
+  "reason": "loop 4 complete: stacked PRs #381-#382 open on wildcat-app-v2, summary in deliverables/issue-608",
+  "excluded_at": "2026-08-19T06:37:58.021018+00:00"
  }
 ]
