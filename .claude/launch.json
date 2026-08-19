@@ -1,0 +1,6 @@
+{
+  "version": "0.0.1",
+  "configurations": [
+    { "name": "console", "runtimeExecutable": "python3", "runtimeArgs": ["bin/console.py"], "port": 8737 }
+  ]
+}
