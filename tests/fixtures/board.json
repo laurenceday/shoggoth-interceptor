@@ -1,0 +1,72 @@
+{
+ "fetched_at": "2026-08-19T00:00:00+00:00",
+ "repo": "wildcat-finance/product",
+ "issues": [
+  {
+   "number": 789,
+   "title": "Restrict all borrower UI actions when a borrower is removed from the archcontroller",
+   "body": "## Description\nWhen the Foundation removes a borrower...",
+   "labels": [],
+   "author": "andfletcher",
+   "assignees": [],
+   "milestone": null,
+   "created_at": "2026-07-09T22:47:50Z",
+   "updated_at": "2026-07-09T22:47:50Z",
+   "comments_count": 1,
+   "html_url": "https://github.com/wildcat-finance/product/issues/789",
+   "comments": [
+    {
+     "author": "andfletcher",
+     "created_at": "2026-07-10T00:00:00Z",
+     "body": "<script>alert(1)</script> context"
+    }
+   ]
+  },
+  {
+   "number": 606,
+   "title": "borrowers can not withdraw over repayed funds",
+   "body": "bug",
+   "labels": [
+    "bug"
+   ],
+   "author": "andfletcher",
+   "assignees": [],
+   "milestone": null,
+   "created_at": "2025-07-22T16:33:47Z",
+   "updated_at": "2025-08-14T16:59:26Z",
+   "comments_count": 0,
+   "html_url": "https://github.com/wildcat-finance/product/issues/606",
+   "comments": []
+  },
+  {
+   "number": 608,
+   "title": "Add max button to deposit modal",
+   "body": "",
+   "labels": [
+    "Improvement"
+   ],
+   "author": "andfletcher",
+   "assignees": [],
+   "milestone": null,
+   "created_at": "2025-07-25T00:00:00Z",
+   "updated_at": "2025-07-25T00:00:00Z",
+   "comments_count": 0,
+   "html_url": "https://github.com/wildcat-finance/product/issues/608",
+   "comments": []
+  },
+  {
+   "number": 858,
+   "title": "Guard restricted withdrawal markets against open transfers",
+   "body": "guard",
+   "labels": [],
+   "author": "andfletcher",
+   "assignees": [],
+   "milestone": null,
+   "created_at": "2026-08-17T18:56:58Z",
+   "updated_at": "2026-08-17T18:56:58Z",
+   "comments_count": 0,
+   "html_url": "https://github.com/wildcat-finance/product/issues/858",
+   "comments": []
+  }
+ ]
+}

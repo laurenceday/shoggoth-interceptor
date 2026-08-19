@@ -1,0 +1,16 @@
+{
+ "fetched_at": "2026-08-19T00:05:00+00:00",
+ "source": "zenhub",
+ "workspace_id": "x",
+ "pipelines": [
+  "New Issues",
+  "Icebox",
+  "Product Backlog"
+ ],
+ "issues": {
+  "product#789": "Product Backlog",
+  "product#606": "Icebox",
+  "product#608": "Icebox",
+  "product#858": "New Issues"
+ }
+}
