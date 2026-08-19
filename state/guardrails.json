@@ -1,0 +1,4 @@
+{
+ "wildcat_gh_login": null,
+ "note": "Set to the gh login of the shoggoth@wildcat.finance account once issued. Until then wildcat-gate denies every push/PR to wildcat-finance/* except skills."
+}
