@@ -151,6 +151,34 @@ $("btnRefresh").addEventListener("click", async () => {
   if (result.ok) { loadHealth(); loadRoster(); }
 });
 
+async function startLoop(mode) {
+  setStatus("launching " + mode + " session…");
+  const result = await postJSON("/api/start-loop", { mode });
+  setStatus(
+    result.ok ? "launched " + result.name + " (pid " + result.pid + ")"
+              : (result.error || "launch failed"),
+    result.ok,
+  );
+  loadLaunches();
+}
+
+async function loadLaunches() {
+  const launches = await getJSON("/api/loops");
+  const box = $("launches");
+  box.textContent = "";
+  box.appendChild(el("h2", null, "Loop launches (" + launches.length + ")"));
+  for (const launch of launches) {
+    const details = el("details");
+    details.appendChild(el("summary", null,
+      launch.name + (launch.running ? " · running" : " · finished")));
+    details.appendChild(el("pre", "text", launch.log_tail || "(no output yet)"));
+    box.appendChild(details);
+  }
+}
+
+$("btnSmoke").addEventListener("click", () => startLoop("smoke"));
+$("btnLoop").addEventListener("click", () => startLoop("loop"));
+
 $("btnArchive").addEventListener("click", async () => {
   setStatus("archiving…");
   const result = await postJSON("/api/archive");
@@ -161,3 +189,4 @@ loadHealth();
 loadRoster();
 loadRankings();
 loadExcluded();
+loadLaunches();
