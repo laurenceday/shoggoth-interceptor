@@ -1,5 +1,5 @@
 {
- "fetched_at": "2026-08-19T05:24:01.984554+00:00",
+ "fetched_at": "2026-08-19T05:50:58.299695+00:00",
  "source": "zenhub",
  "workspace_id": "660c35a2ab6252068500579b",
  "pipelines": [
@@ -138,6 +138,7 @@
   "product#860": "New Issues",
   "product#861": "New Issues",
   "product#862": "New Issues",
+  "wildcat-app-v2#377": "New Issues",
   "product#684": "Icebox",
   "product#632": "Icebox",
   "product#726": "Icebox",
