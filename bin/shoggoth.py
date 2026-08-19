@@ -222,7 +222,9 @@ def exclude(number: int, reason: str):
         "excluded_at": datetime.now(timezone.utc).isoformat(),
     })
     STATE.mkdir(exist_ok=True)
-    EXCLUDED.write_text(json.dumps(entries, indent=1))
+    tmp = EXCLUDED.with_suffix(".json.tmp")
+    tmp.write_text(json.dumps(entries, indent=1))
+    tmp.replace(EXCLUDED)
     print(f"excluded #{number}: {reason}")
 
 
