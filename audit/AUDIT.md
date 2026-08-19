@@ -42,3 +42,17 @@ URLs; server rejects any request whose Host is not 127.0.0.1 or localhost, with
 a host_allowed unit test covering rebinding shapes.
 
 Leads not pursued: none
+
+## Step 3, round 2 — 2026-08-19
+
+Suite: waived (no Solidity); bundled lints re-ran against the fixed tree.
+
+| id | severity | file | finding | status |
+| --- | --- | --- | --- | --- |
+
+Findings: 0. phylax, ephoros, hypomnema all exit 0; 20 tests green. Re-review of
+the round 1 fixes: Host pinning splits on the last colon (IPv6 literals are out
+of scope while the bind is 127.0.0.1), and the link guard renders no anchor at
+all for a non-GitHub URL.
+
+Leads not pursued: none
