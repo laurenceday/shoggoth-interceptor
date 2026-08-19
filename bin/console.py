@@ -25,6 +25,14 @@ REPO_SHORT = "product"
 MAX_REASON_LENGTH = 300
 
 
+def host_allowed(host: str) -> bool:
+    """Pin the Host header so a DNS-rebound origin cannot reach the API."""
+    if not host:
+        return False
+    name = host.rsplit(":", 1)[0] if ":" in host else host
+    return name in ("127.0.0.1", "localhost")
+
+
 def run_argv(argv):
     """Default subprocess runner: fixed argv, no shell, bounded output."""
     proc = subprocess.run(argv, capture_output=True, text=True, timeout=600)
@@ -171,6 +179,8 @@ class Handler(BaseHTTPRequestHandler):
             return None
 
     def do_POST(self):
+        if not host_allowed(self.headers.get("Host", "")):
+            return self._send_json({"error": "bad host"}, 403)
         # The custom header forces a CORS preflight, which no endpoint answers,
         # so a hostile page in the same browser cannot fire these blind.
         if self.headers.get("X-Shoggoth") != "1":
@@ -189,6 +199,8 @@ class Handler(BaseHTTPRequestHandler):
         return self._send_json({"error": "not found"}, 404)
 
     def do_GET(self):
+        if not host_allowed(self.headers.get("Host", "")):
+            return self._send_json({"error": "bad host"}, 403)
         api = self.api
         path = self.path.split("?", 1)[0]
         if path in ("/", "/index.html"):

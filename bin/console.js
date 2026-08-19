@@ -80,11 +80,13 @@ async function loadIssue(number) {
   box.appendChild(el("h2", null, "#" + issue.number + " " + issue.title));
   const meta = el("p", "meta",
     issue.pipeline + " · " + issue.author + " · updated " + issue.updated_at + " · ");
-  const link = el("a", null, "open on GitHub");
-  link.href = issue.html_url;
-  link.target = "_blank";
-  link.rel = "noopener";
-  meta.appendChild(link);
+  if (/^https:\/\/github\.com\//.test(issue.html_url)) {
+    const link = el("a", null, "open on GitHub");
+    link.href = issue.html_url;
+    link.target = "_blank";
+    link.rel = "noopener";
+    meta.appendChild(link);
+  }
   box.appendChild(meta);
   box.appendChild(el("pre", "text", issue.body || "(empty)"));
   for (const comment of issue.comments) {
