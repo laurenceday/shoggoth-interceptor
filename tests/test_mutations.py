@@ -82,6 +82,16 @@ class AtomicExcludeTest(unittest.TestCase):
         self.assertNotIn("EXCLUDED.write_text", write_block)
 
 
+class HostPinningTest(unittest.TestCase):
+    def test_host_header_pinning(self):
+        console = load_module("console")
+        for good in ("127.0.0.1:8737", "localhost:8737", "127.0.0.1", "localhost"):
+            self.assertTrue(console.host_allowed(good), good)
+        for bad in ("", None, "evil.example:8737", "127.0.0.1.evil.example",
+                    "shoggoth.attacker.net", "0.0.0.0:8737"):
+            self.assertFalse(console.host_allowed(bad or ""), bad)
+
+
 class ClientHygieneTest(unittest.TestCase):
     def test_client_never_uses_innerhtml_on_board_data(self):
         js = (REPO / "bin" / "console.js").read_text()
