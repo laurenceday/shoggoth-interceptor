@@ -4,6 +4,10 @@
     {
       "repo": "wildcat-finance/product",
       "default_target": "wildcat-finance/wildcat-app-v2"
+    },
+    {
+      "repo": "aave/aave-v4",
+      "default_target": "laurenceday/aave-v4-shoggoth"
     }
   ],
   "selection": {
