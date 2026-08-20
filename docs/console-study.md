@@ -36,8 +36,8 @@ loop 1 on product#789 and checked by `python3 -m unittest discover -s tests`.
 
 - `bin/shoggoth.py` (this repo): fetch, fetch-pipelines, roster, show, exclude.
   The console shells out to it or imports it rather than duplicating logic.
-- `loops/board.json`, `loops/pipelines.json`, `loops/excluded.json`,
-  `loops/deliverables/*` (this repo): the data the console renders.
+- `.loops/board.json`, `.loops/pipelines.json`, `.loops/excluded.json`,
+  `.loops/deliverables/*` (this repo): the data the console renders.
 - `bin/archive.sh` (this repo): the rolling archive the console will trigger.
 - ZenHub GraphQL API (`api.zenhub.com/public/graphql`): pipeline membership,
   already integrated; the board UI at app.zenhub.com remains the write surface.
@@ -108,18 +108,18 @@ The audit loop should look hardest at:
 ## 6. Glossary seeds
 
 - Roster: open product-repo issues minus exclusions, with pipeline names.
-- Pipeline map: ZenHub issue-to-column mapping in `loops/pipelines.json`.
+- Pipeline map: ZenHub issue-to-column mapping in `.loops/pipelines.json`.
 - Scope filter: Icebox and Product Backlog, tech debt, frontend first.
 - Exclusion list: tickets no future loop may pick, with reasons.
 - Loop: one ranked pick worked through a Fiat delivery to deliverables.
-- Deliverable bundle: `loops/deliverables/issue-<n>/` files the operator attaches.
+- Deliverable bundle: `.loops/deliverables/issue-<n>/` files the operator attaches.
 - Archive: rolling zip from `bin/archive.sh`, newest ten kept.
 
 ## 7. Sources
 
 - This conversation (2026-08-19) and the operator's board screenshot.
 - `CLAUDE.md` in this repo: loop protocol, scope directive, hygiene rules.
-- `loops/deliverables/loop-1-ranking-scoped.md`: the ranking the console displays.
+- `.loops/deliverables/loop-1-ranking-scoped.md`: the ranking the console displays.
 - ZenHub GraphQL public API documentation (developers.zenhub.com).
 - GitHub REST issues API documentation (docs.github.com/rest/issues).
 
@@ -129,7 +129,7 @@ The audit loop should look hardest at:
   Run the imprimatur lint on every shipped document. Keep the console bound to
   127.0.0.1.
 - **Ask first.** Adding any dependency. Binding any other interface. Adding an
-  endpoint that writes anywhere beyond `loops/`. Exposing agent or credential
+  endpoint that writes anywhere beyond `.loops/`. Exposing agent or credential
   state in a response.
 - **Never.** Serialise `.env` contents into a response or log. Render board
   text as HTML. Shell-interpolate request data. Claim a lint, test, or fetch

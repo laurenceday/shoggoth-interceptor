@@ -1,6 +1,6 @@
 # Migration check: borrower restriction (PR #367)
 
-Run 2026-08-19 with `bin/migration-check.sh loops/work/wildcat-app-v2` (the #789
+Run 2026-08-19 with `bin/migration-check.sh .loops/work/wildcat-app-v2` (the #789
 run branch tree), answering Jack's question about how the migration was
 tested. Method: disposable Postgres 16 in Docker, zero production
 credentials anywhere in the pipeline; `prisma migrate deploy` applies the

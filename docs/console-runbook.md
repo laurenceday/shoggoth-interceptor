@@ -1,6 +1,6 @@
 # Runbook: shoggoth operator console
 
-Derived from `loops/hexaemeron/study.md`. Four steps, one pull request each,
+Derived from `.loops/hexaemeron/study.md`. Four steps, one pull request each,
 stacked on `fiat/shoggoth-operator-console`. Every exit is a command.
 
 ## Step 1: Scaffold and committed spec
@@ -52,10 +52,10 @@ board data).
 product#789.
 **Entry.** Step 3's exit state.
 **Exit.** `python3 -m unittest discover -s tests` green; demo evidence in
-`loops/deliverables/console-demo/` (screenshots plus a transcript note)
+`.loops/deliverables/console-demo/` (screenshots plus a transcript note)
 showing: console opened, roster and ranking viewed, #789 detail read, and,
 after the 789 loop closes, the exclusion recorded and an archive cut from the
 page.
-**Files.** `loops/deliverables/console-demo/*`, `docs/console-study.md` updated
+**Files.** `.loops/deliverables/console-demo/*`, `docs/console-study.md` updated
 only if the demo corrects it.
 **Tests.** No new suites; the demo path is the check named by the study.

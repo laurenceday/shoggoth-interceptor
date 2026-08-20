@@ -17,7 +17,7 @@ The whole lo̒op protoc̴ol,̉ i̮nclu͕di̵ng the sh̶ar̵p edgēs̷,̟ l̸ive
 - `bin/shoggoth.py` reads the board. It knows `fetch`, `fetch-pipelines`,
   `roster`, `show <n>`, `exclude <n> <reason>`, and `excluded`.
 - `bin/console.py` gives the operator a window into the loop.
-- `bin/archive.sh` cuts a rolling local zip under `loops/archives/`.
+- `bin/archive.sh` cuts a rolling local zip under `.loops/archives/`.
 - `bin/wildcat-gate.sh` enforces the repository's push and pull-request rules
   from `state/guardrails.json`.
 - `bin/install-guardrails.sh` installs that gate as a pre-push hook in a
@@ -29,7 +29,7 @@ The whole lo̒op protoc̴ol,̉ i̮nclu͕di̵ng the sh̶ar̵p edgēs̷,̟ l̸ive
 - `bin/migration-check.sh` spins up disposable Docker Postgres, applies every
   Prisma migration from zero, and checks the result against `schema.prisma`.
   Any loop that touches `prisma/` must run it.
-- `loops/` holds the board state, rankings, ticket deliverables, run logs,
+- `.loops/` holds the board state, rankings, ticket deliverables, run logs,
   working clones, and local archives in one place.
 - `docs/console-study.md` and `docs/console-runbook.md` hold the console spec.
 

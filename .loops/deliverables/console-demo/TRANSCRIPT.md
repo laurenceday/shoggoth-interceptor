@@ -29,7 +29,7 @@ Completed 2026-08-19 ~03:16 UTC:
   clicked "Exclude #789": the roster dropped to 75 candidates / 1 excluded
   and #789 left the list without a reload.
 - Clicked "Cut archive": status bar reported
-  loops/archives/shoggoth-20260819-031646.zip, confirmed on disk (52KB, includes
+  .loops/archives/shoggoth-20260819-031646.zip, confirmed on disk (52KB, includes
   the issue-789 deliverables).
 - Every action in this demo ran through the console UI in the browser pane;
   the equivalent curl checks are recorded alongside in roster-capture.txt.

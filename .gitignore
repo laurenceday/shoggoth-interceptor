@@ -3,8 +3,8 @@
 .DS_Store
 __pycache__/
 *.py[cod]
-loops/archives/
-loops/board.json
-loops/hexaemeron/
-loops/runs/
-loops/work/
+.loops/archives/
+.loops/board.json
+.loops/hexaemeron/
+.loops/runs/
+.loops/work/

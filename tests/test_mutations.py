@@ -30,7 +30,7 @@ class MutationTest(unittest.TestCase):
         self.console = load_module("console")
         self.tmp = tempfile.TemporaryDirectory()
         self.root = Path(self.tmp.name)
-        (self.root / "loops").mkdir()
+        (self.root / ".loops").mkdir()
         (self.root / "bin").mkdir()
         self.runner = StubRunner()
         self.api = self.console.Api(self.root, runner=self.runner)
@@ -69,7 +69,7 @@ class MutationTest(unittest.TestCase):
 
     def test_archives_stay_under_loops(self):
         source = (REPO / "bin" / "archive.sh").read_text()
-        self.assertIn('$ROOT/loops/archives', source)
+        self.assertIn('$ROOT/.loops/archives', source)
         self.assertNotIn('$ROOT/archives', source)
 
     def test_failed_subprocess_reported_truthfully(self):
@@ -107,9 +107,18 @@ class ClientHygieneTest(unittest.TestCase):
     def test_page_pins_csp_and_local_script_only(self):
         console = load_module("console")
         html = (REPO / "bin" / "console.html").read_text()
+        self.assertIn("<title>Shoggoth Interceptor</title>", html)
+        self.assertIn("<h1>SHOGGOTH INTERCEPTOR</h1>", html)
         self.assertIn('src="/console.js"', html)
+        self.assertIn('url("/assets/shoggoth.png")', html)
         self.assertNotIn("http://", html)
         self.assertNotIn("https://", html)
+
+    def test_console_background_is_a_fixed_local_asset(self):
+        source = (REPO / "bin" / "console.py").read_text()
+        self.assertTrue((REPO / "assets" / "shoggoth.png").is_file())
+        self.assertIn('if path == "/assets/shoggoth.png":', source)
+        self.assertIn('ROOT / "assets" / "shoggoth.png"', source)
 
 
 if __name__ == "__main__":

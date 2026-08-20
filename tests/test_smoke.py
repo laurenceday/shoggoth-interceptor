@@ -10,7 +10,7 @@ class SmokeTest(unittest.TestCase):
         spec = importlib.util.spec_from_file_location("shoggoth", REPO / "bin" / "shoggoth.py")
         mod = importlib.util.module_from_spec(spec)
         spec.loader.exec_module(mod)
-        self.assertEqual(mod.STATE, REPO / "loops")
+        self.assertEqual(mod.STATE, REPO / ".loops")
         for path in (mod.STATE, mod.BOARD, mod.EXCLUDED, mod.PIPELINES):
             self.assertTrue(path.resolve().is_relative_to(REPO), path)
 

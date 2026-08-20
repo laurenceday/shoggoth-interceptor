@@ -49,7 +49,7 @@ re-scope #443 to "statement lives in the export bundle" under the epic.
 ## Operator actions
 
 1. Review and merge #378 then #379, then the run branch into `main`
-   (fiat state parked in `loops/work/wildcat-app-v2-442/.hexaemeron`,
+   (fiat state parked in `.loops/work/wildcat-app-v2-442/.hexaemeron`,
    `hexctl resume` brings the stack down on the ledger).
 2. Eyeball a terminated market on testnet: it should land on Status and
    Details with no Borrow and Repay entry in the sidebar.

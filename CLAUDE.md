@@ -28,13 +28,13 @@ can close it.
   ranks below frontend work.
 - The board spans 6 repositories. Some Icebox and Product Backlog issues live
   outside `product`, in Product Planning and v2-protocol. They appear in
-  `loops/pipelines.json`; the roster currently covers `product` only.
+  `.loops/pipelines.json`; the roster currently covers `product` only.
 
 ## Scratchpads go cold
 
 Run `bin/archive.sh` at the end of every loop. Run it again after producing
 anything in the session scratchpad worth keeping. It mirrors every session
-scratchpad into `loops/archives/scratch-mirror/` and cuts a rolling zip of
+scratchpad into `.loops/archives/scratch-mirror/` and cuts a rolling zip of
 scratch, deliverables, loop state, and docs. It keeps the newest 10. Nothing
 useful should die with a cold scratchpad.
 
@@ -44,9 +44,9 @@ Fetch. Roster. Rank. Work. Leave receipts. Open pull requests only when the
 chains allow it. Exclude the ticket. Complete the pass. Start again.
 
 1. **Fetch.** Run `python3 bin/shoggoth.py fetch`. This refreshes
-   `loops/board.json` with every open issue and its comments.
+   `.loops/board.json` with every open issue and its comments.
 2. **Roster.** Run `python3 bin/shoggoth.py roster`. Candidates are open
-   issues minus `loops/excluded.json`.
+   issues minus `.loops/excluded.json`.
 3. **Rank.** Score every candidate out of 100. Weight these factors roughly
    equally:
    - *Ease:* can one fiat loop plausibly finish it? A clear ticket beats a
@@ -60,11 +60,11 @@ chains allow it. Exclude the ticket. Complete the pass. Start again.
 
    Break ties alphabetically by title. Before work starts, record the top
    roughly 15 candidates, their scores, and one-line reasons in
-   `loops/deliverables/loop-<n>-ranking.md`.
+   `.loops/deliverables/loop-<n>-ranking.md`.
 4. **Work it.** Read the full ticket with
    `python3 bin/shoggoth.py show <n>`. Then run `/hexaemeron:fiat`: study,
    runbook, and per-step implementation, audit, prose, and push.
-5. **Leave receipts.** Put everything in `loops/deliverables/issue-<n>/`: study,
+5. **Leave receipts.** Put everything in `.loops/deliverables/issue-<n>/`: study,
    runbook, audit notes, decision briefs, and whatever else the ticket
    earned. Add a top-level `SUMMARY.md` that says what happened and what the
    operator should do next: attach X, review PR Y, close it, or keep it open.
@@ -72,7 +72,7 @@ chains allow it. Exclude the ticket. Complete the pass. Start again.
    usually `wildcat-app-v2` for app tickets and `v2-protocol` for contracts.
    Use stacked pull requests from ticket branches named
    `shoggoth/issue-<n>/<slug>`. Clone working copies under the gitignored
-   `loops/work/` directory. Link the product issue in every pull request body.
+   `.loops/work/` directory. Link the product issue in every pull request body.
 7. **Exclude.** Run
    `python3 bin/shoggoth.py exclude <n> "<what happened>"`. The next loop
    skips that ticket. Keep the reason about the work, with no internal count.
@@ -121,7 +121,7 @@ Only a human maintainer acting outside the Shoggoth may change either file.
   ticket when its branch or pull request trail shows that someone is already
   working on it. The board fetch stores assignees. Ranking must check them.
 - **While (a) denies writes:** prepare app and protocol implementation locally
-  as worktree branches and patch files under `loops/deliverables/`, then hand
+  as worktree branches and patch files under `.loops/deliverables/`, then hand
   them to the operator. The four pull request stacks opened before the gate
   remain open for review: #367-#370, #374-#375, #378-#379, and #381-#382. Do
   not push to them again until the write gate clears.
@@ -142,12 +142,12 @@ Only a human maintainer acting outside the Shoggoth may change either file.
 ## Where things live
 
 - `bin/shoggoth.py`: fetch / roster / show / exclude / excluded
-- `loops/board.json`: the last fetch; regenerate it freely
-- `loops/pipelines.json`: the last ZenHub pipeline map
-- `loops/excluded.json`: completed or parked tickets; append-only
-- `loops/loop.json`: local completion state
-- `loops/deliverables/`: per-ticket output for the operator
-- `loops/runs/`: local launch logs and pidfiles
-- `loops/work/`: repository clones and gitignored scratch
-- `loops/archives/`: local archive zips and scratchpad mirrors
+- `.loops/board.json`: the last fetch; regenerate it freely
+- `.loops/pipelines.json`: the last ZenHub pipeline map
+- `.loops/excluded.json`: completed or parked tickets; append-only
+- `.loops/loop.json`: local completion state
+- `.loops/deliverables/`: per-ticket output for the operator
+- `.loops/runs/`: local launch logs and pidfiles
+- `.loops/work/`: repository clones and gitignored scratch
+- `.loops/archives/`: local archive zips and scratchpad mirrors
 - `state/guardrails.json`: configuration for the protected repository gate

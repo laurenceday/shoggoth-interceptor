@@ -29,7 +29,7 @@ proven.
 **Exit.** `npx jest src/utils` green including the wiring pin
 (`src/utils/terminatedMarketWiring.test.ts`); `npx tsc --noEmit` exit 0;
 eslint 0 errors on changed files; the decision brief written to the
-interceptor's `loops/deliverables/issue-442-443/`.
+interceptor's `.loops/deliverables/issue-442-443/`.
 **Files.** Delete
 `src/app/[locale]/borrower/market/[address]/components/Modals/StatementModal/`
 (three files); remove `borrowerMarketDetails.modals.statement` and

@@ -9,10 +9,10 @@ never the read token.
 
 Pipeline data (Icebox / Product Backlog / ToDo ...) lives in ZenHub, not GitHub.
 If ZENHUB_API_KEY is present in .env, `fetch-pipelines` pulls the real mapping;
-otherwise loops/pipelines.json holds a manually seeded map (source: "screenshot").
+otherwise .loops/pipelines.json holds a manually seeded map (source: "screenshot").
 
 Subcommands:
-  fetch                 Pull all open issues + comments into loops/board.json
+  fetch                 Pull all open issues + comments into .loops/board.json
   fetch-pipelines       Pull issue -> pipeline map from ZenHub (needs ZENHUB_API_KEY)
   roster [pipeline...]  Print candidates, optionally filtered to named pipelines
   show <n>              Print one issue in full (body + all comments)
@@ -29,7 +29,7 @@ from datetime import datetime, timezone
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parent.parent
-STATE = ROOT / "loops"
+STATE = ROOT / ".loops"
 BOARD = STATE / "board.json"
 EXCLUDED = STATE / "excluded.json"
 PIPELINES = STATE / "pipelines.json"
@@ -173,7 +173,7 @@ def load_pipelines():
 
 def load_board():
     if not BOARD.exists():
-        sys.exit("no loops/board.json — run `shoggoth.py fetch` first")
+        sys.exit("no .loops/board.json — run `shoggoth.py fetch` first")
     return json.loads(BOARD.read_text())
 
 

@@ -3,7 +3,7 @@
 > **Scope:** This file records implementation review rounds for the operator
 > console. It is not a protocol security audit, an external audit report, or
 > the per-ticket audit record produced during a Fiat delivery. Those ticket
-> records stay with their other material under `loops/deliverables/`.
+> records stay with their other material under `.loops/deliverables/`.
 
 ## Step 1, round 1 - 2026-08-19
 
@@ -72,7 +72,7 @@ Suite: waived (no Solidity); bundled lints ran per the non-Solidity rule.
 Findings: 0. phylax, ephoros, hypomnema all exit 0. The step ships demo
 evidence and a launch config only; no new code surface. The demo itself
 exercised refresh, detail, exclude, and archive against the live server with
-the results recorded in loops/deliverables/console-demo/.
+the results recorded in .loops/deliverables/console-demo/.
 
 Leads not pursued: none
 
