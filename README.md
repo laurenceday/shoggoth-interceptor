@@ -2,11 +2,13 @@
 
 ![Meet our new full-stack developer.](assets/shoggoth-2-1.png)
 
-The bȯard is̔ full. The loo͑p i̦s hungry.
+The issues are full. The loop is hungry.
 
-Sh̜oggoth re̵ads the Wil̍dcat Zḛn̵Hu̔b Pr̳o̷du̷ct Planńin̅g board, ranks the o̸pen tickets,͙ an̴d̶ t̴akeͫs tͣhem on̴e at a tĩme͙ throug̷h a Fiat deliv́er̚y. Deliv̵e͒ra̸b̞l̶ḛs śt̓a̷y͑ local. Th̘eͮ ticket goes on the exclusi͒on list.̎ Then it sta͇rts again.
+Shoggoth reads configured GitHub repositories, ranks eligible issues, and takes
+them one at a time through a Fiat delivery. Deliverables stay local unless the
+repository policy permits a pull request. Then it starts again.
 
-The whole lo̒op protoc̴ol,̉ i̮nclu͕di̵ng the sh̶ar̵p edgēs̷,̟ l̸ives in̸ ČLAUD̳E̸.͔m̘d.́
+The whole loop protocol, including the sharp edges, lives in `CLAUDE.md`.
 
 <div align="center">
   <video src="https://github.com/user-attachments/assets/87e15a1f-874d-4150-88bf-e6063cb20a2a"></video>
@@ -20,18 +22,19 @@ was... ‘oh, this thing is now in our space’."* - [@Kethic](https://github.co
 
 ## What's lurking in here
 
-- `bin/shoggoth.py` reads the board. It knows `fetch`, `fetch-pipelines`,
-  `roster`, `show <n>`, `exclude <n> <reason>`, and `excluded`.
+- `config/resolver.json` names GitHub sources, selectors and target routes.
+- `bin/shoggoth.py` knows `fetch`, `roster`, `show <owner/repo#n>`,
+  `target`, `exclude`, and optional `fetch-pipelines` metadata.
 - `bin/console.py` gives the operator a window into the loop.
 - `bin/archive.sh` cuts a rolling local zip under `.loops/archives/`.
 - [`docs/guardrails.md`](docs/guardrails.md) explains the
-  `bin/wildcat-gate.sh`, `bin/install-guardrails.sh`, and `bin/shoggoth-pr.sh`
+  `bin/repository-gate.py`, `bin/install-guardrails.sh`, and `bin/shoggoth-pr.sh`
   chain. The gate and its installer are fixed boundaries.
   The Shoggoth may neither change nor bypass either file.
 - `bin/migration-check.sh` spins up disposable Docker Postgres, applies every
   Prisma migration from zero, and checks the result against `schema.prisma`.
   Any loop that touches `prisma/` must run it.
-- `.loops/` holds the board state, rankings, ticket deliverables, run logs,
+- `.loops/` holds issue state, rankings, ticket deliverables, run logs,
   working clones, and local archives in one place.
 - `docs/console-study.md` and `docs/console-runbook.md` hold the console spec.
 
@@ -43,15 +46,24 @@ Run it locally:
 python3 bin/console.py
 ```
 
-Then open http://127.0.0.1:8737. The console shows the scoped roster from
-Icebox and Product Backlog, with tech debt first. It shows rankings, ticket
-details and comments, deliverables, and the exclusion list. From there an
-operator can refresh the board, record an exclusion, or cut an archive.
+Then open http://127.0.0.1:8737. The console shows the configured repository
+roster, rankings, issue details and comments, deliverables, and exclusions.
 
 The console binds to `127.0.0.1` and nowhere else.
 
 It writes nothing to the issue tracker. External access stays in the 
-command-line board reader.
+command-line issue reader.
+
+## First-run write policy
+
+Everything is denied until the operator names one sandbox repository:
+
+```bash
+python3 bin/repository-gate.py init OWNER OWNER/SANDBOX
+```
+
+The question records the active GitHub login and writes the local policy under
+`.loops/`. Every other repository in that organisation remains off-limits.
 
 ## Check the exits
 

@@ -1,5 +1,5 @@
 #!/bin/sh
-# Installs the wildcat-gate pre-push hook into a clone. Worktrees share the
+# Installs the repository gate pre-push hook into a clone. Worktrees share the
 # parent clone's hooks directory, so one install covers them all. Run this as
 # part of the clone step of every loop; re-running is harmless.
 #
@@ -15,10 +15,10 @@ mkdir -p "$hooks_dir"
 
 cat > "$hooks_dir/pre-push" <<EOF
 #!/bin/sh
-# Installed by shoggoth-interceptor bin/install-guardrails.sh. Blocks pushes
-# to wildcat-finance/* (except skills) without the shoggoth credential.
+# Installed by shoggoth-interceptor. Only the configured organisation sandbox
+# may receive a push, and only from the configured GitHub login.
 "$ROOT/bin/verify-gate.py"
-exec "$ROOT/bin/wildcat-gate.sh" "\${2:-\$(git remote get-url "\$1")}"
+exec "$ROOT/bin/repository-gate.py" "\${2:-\$(git remote get-url "\$1")}"
 EOF
 chmod +x "$hooks_dir/pre-push"
 echo "guardrail pre-push hook installed at $hooks_dir/pre-push"

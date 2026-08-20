@@ -1,0 +1,29 @@
+{
+  "version": 1,
+  "sources": [
+    {
+      "repo": "wildcat-finance/product",
+      "default_target": "wildcat-finance/wildcat-app-v2"
+    }
+  ],
+  "selection": {
+    "unassigned_only": true,
+    "include_labels": [],
+    "exclude_labels": [
+      "biz-dev",
+      "hiring",
+      "marketing"
+    ]
+  },
+  "routes": [
+    {
+      "source": "wildcat-finance/product",
+      "target": "wildcat-finance/v2-protocol",
+      "labels_any": [
+        "contracts",
+        "protocol"
+      ]
+    }
+  ],
+  "zenhub": null
+}

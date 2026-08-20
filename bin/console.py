@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """Shoggoth operator console — a local, read-mostly window onto the loop state.
 
-Serves the board roster, ticket detail, rankings, exclusions, and deliverables
+Serves the issue roster, detail, rankings, exclusions, and deliverables
 as JSON over 127.0.0.1 only. Credentials are never read here; only
 bin/shoggoth.py touches .env, and no endpoint serialises anything outside the
 `.loops/` tree. Board text is returned as JSON strings and must be rendered as
@@ -20,9 +20,10 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parent.parent
 BIND_HOST = "127.0.0.1"
 DEFAULT_PORT = 8737
-DEFAULT_PIPELINES = ("Icebox", "Product Backlog")
-REPO_SHORT = "product"
 MAX_REASON_LENGTH = 300
+ISSUE_KEY_RE = re.compile(
+    r"^[A-Za-z0-9][A-Za-z0-9_.-]{0,99}/[A-Za-z0-9][A-Za-z0-9_.-]{0,99}#[1-9][0-9]{0,8}$"
+)
 
 
 def host_allowed(host: str) -> bool:
@@ -68,26 +69,74 @@ class Api:
     def excluded(self):
         return self._load("excluded.json") or []
 
-    def _pipeline_of(self, number: int, pipelines) -> str:
-        if not pipelines:
-            return "(no pipeline data)"
-        return pipelines["issues"].get(f"{REPO_SHORT}#{number}", "(unmapped)")
+    def _selection(self):
+        path = self.root / "config" / "resolver.json"
+        if not path.exists():
+            return {"unassigned_only": True, "include_labels": set(), "exclude_labels": set()}
+        if path.stat().st_size > 1_000_000:
+            raise ValueError("resolver config exceeds size limit")
+        config = json.loads(path.read_text(encoding="utf-8"))
+        selection = config.get("selection", {})
+        include = selection.get("include_labels", [])
+        exclude = selection.get("exclude_labels", [])
+        unassigned = selection.get("unassigned_only", True)
+        if (not isinstance(unassigned, bool) or not isinstance(include, list)
+                or not isinstance(exclude, list)
+                or any(not isinstance(value, str) for value in include + exclude)):
+            raise ValueError("invalid resolver selection")
+        return {
+            "unassigned_only": unassigned,
+            "include_labels": {value.lower() for value in include},
+            "exclude_labels": {value.lower() for value in exclude},
+        }
 
-    def roster(self, wanted_pipelines=DEFAULT_PIPELINES):
+    def _normalise_issue(self, issue, board):
+        out = dict(issue)
+        repository = out.get("repository") or board.get("repo")
+        if not isinstance(repository, str) or "/" not in repository:
+            raise ValueError("invalid issue repository")
+        out["repository"] = repository.lower()
+        out["key"] = out.get("key") or f"{out['repository']}#{int(out['number'])}"
+        if not ISSUE_KEY_RE.fullmatch(out["key"]):
+            raise ValueError("invalid issue key")
+        return out
+
+    def _pipeline_of(self, issue, pipelines):
+        if not pipelines:
+            return None
+        short = issue["repository"].split("/", 1)[1]
+        return (pipelines.get("issues", {}).get(issue["key"])
+                or pipelines.get("issues", {}).get(f"{short}#{issue['number']}"))
+
+    def roster(self):
         board = self._load("board.json")
         if board is None:
             return {"error": "no board.json; refresh first", "candidates": []}
         pipelines = self._load("pipelines.json")
-        skip = {e["number"] for e in self.excluded()}
-        wanted = {p.lower() for p in wanted_pipelines} if wanted_pipelines else None
+        repositories = board.get("repositories") or [board.get("repo")]
+        selection = self._selection()
+        skip = set()
+        for entry in self.excluded():
+            if isinstance(entry.get("key"), str):
+                skip.add(entry["key"].lower())
+            elif len(repositories) == 1 and isinstance(entry.get("number"), int):
+                skip.add(f"{repositories[0]}#{entry['number']}".lower())
         rows = []
-        for issue in board["issues"]:
-            if issue["number"] in skip:
+        for raw_issue in board["issues"]:
+            issue = self._normalise_issue(raw_issue, board)
+            labels = {label.lower() for label in issue.get("labels", [])}
+            if issue["key"] in skip:
                 continue
-            pipe = self._pipeline_of(issue["number"], pipelines)
-            if wanted is not None and pipe.lower() not in wanted:
+            if selection["unassigned_only"] and issue.get("assignees"):
                 continue
+            if selection["include_labels"] and not labels.intersection(selection["include_labels"]):
+                continue
+            if labels.intersection(selection["exclude_labels"]):
+                continue
+            pipe = self._pipeline_of(issue, pipelines)
             rows.append({
+                "key": issue["key"],
+                "repository": issue["repository"],
                 "number": issue["number"],
                 "title": issue["title"],
                 "labels": issue["labels"],
@@ -96,30 +145,39 @@ class Api:
                 "updated_at": issue["updated_at"],
                 "html_url": issue["html_url"],
             })
-        rows.sort(key=lambda r: (r["pipeline"], -r["number"]))
+        rows.sort(key=lambda r: (r["repository"], r["title"].lower(), r["number"]))
         return {
             "fetched_at": board["fetched_at"],
             "pipelines_fetched_at": pipelines["fetched_at"] if pipelines else None,
-            "filter": sorted(wanted) if wanted else None,
             "excluded_count": len(skip),
             "candidates": rows,
         }
 
-    def issue(self, number: int):
+    def issue(self, key):
+        if not isinstance(key, str) or not ISSUE_KEY_RE.fullmatch(key):
+            return None
         board = self._load("board.json")
         if board is None:
             return None
-        for issue in board["issues"]:
-            if issue["number"] == number:
+        for raw_issue in board["issues"]:
+            issue = self._normalise_issue(raw_issue, board)
+            if issue["key"] == key.lower():
                 out = dict(issue)
-                out["pipeline"] = self._pipeline_of(number, self._load("pipelines.json"))
-                out["deliverables"] = self.deliverable_files(number)
+                out["pipeline"] = self._pipeline_of(issue, self._load("pipelines.json"))
+                out["deliverables"] = self.deliverable_files(key)
                 return out
         return None
 
-    def deliverable_files(self, number: int):
-        folder = self.deliverables / f"issue-{int(number)}"
+    def deliverable_files(self, key):
+        if not isinstance(key, str) or not ISSUE_KEY_RE.fullmatch(key):
+            raise ValueError("invalid issue key")
+        repository, number = key.rsplit("#", 1)
+        canonical = "issue-" + re.sub(r"[^a-z0-9.-]+", "-", repository.lower()) + f"-{number}"
+        folder = self.deliverables / canonical
         if not folder.is_dir():
+            legacy = self.deliverables / f"issue-{number}"
+            folder = legacy if legacy.is_dir() else folder
+        if not folder.is_dir() or not folder.resolve().is_relative_to(self.deliverables.resolve()):
             return []
         return sorted(p.name for p in folder.iterdir() if p.is_file())
 
@@ -134,21 +192,19 @@ class Api:
     # --- mutations: fixed argv only, validated input only ---
 
     def refresh(self):
-        results = []
-        for cmd in ("fetch", "fetch-pipelines"):
-            code, output = self.runner([sys.executable, str(self.shoggoth), cmd])
-            results.append({"command": cmd, "exit": code, "output": output})
+        code, output = self.runner([sys.executable, str(self.shoggoth), "fetch"])
+        results = [{"command": "fetch", "exit": code, "output": output}]
         return {"ok": all(r["exit"] == 0 for r in results), "results": results}
 
-    def exclude(self, number, reason):
-        if not isinstance(number, int) or not 0 < number < 1_000_000:
-            return {"ok": False, "error": "number must be a positive integer"}
+    def exclude(self, key, reason):
+        if not isinstance(key, str) or not ISSUE_KEY_RE.fullmatch(key):
+            return {"ok": False, "error": "issue must be owner/repo#number"}
         if not isinstance(reason, str) or not reason.strip():
             return {"ok": False, "error": "reason required"}
         if len(reason) > MAX_REASON_LENGTH:
             return {"ok": False, "error": f"reason longer than {MAX_REASON_LENGTH} chars"}
         code, output = self.runner(
-            [sys.executable, str(self.shoggoth), "exclude", str(number), reason.strip()])
+            [sys.executable, str(self.shoggoth), "exclude", key, reason.strip()])
         return {"ok": code == 0, "exit": code, "output": output}
 
     def archive(self):
@@ -161,10 +217,9 @@ SMOKE_PROMPT = (
     "Reply with exactly SHOGGOTH-SMOKE-OK and nothing else."
 )
 LOOP_PROMPT = (
-    "Run one Shoggoth Interceptor loop for the wildcat-finance product board. "
-    "Follow CLAUDE.md in this repository exactly: refresh the board and "
-    "pipelines, rank the in-scope candidates (Icebox and Product Backlog, "
-    "tech debt only, frontend first), record the ranking in .loops/deliverables/, "
+    "Run one Shoggoth Interceptor loop for the repositories in config/resolver.json. "
+    "Follow CLAUDE.md in this repository exactly: refresh GitHub intake, rank "
+    "the eligible candidates, record the ranking in .loops/deliverables/, "
     "run the /hexaemeron:fiat delivery on the top pick with stacked PRs left "
     "open for review, write the deliverables summary, exclude the ticket, "
     "and run bin/archive.sh. Then stop."
@@ -296,7 +351,7 @@ class Handler(BaseHTTPRequestHandler):
             body = self._read_body()
             if body is None:
                 return self._send_json({"error": "bad body"}, 400)
-            result = self.api.exclude(body.get("number"), body.get("reason"))
+            result = self.api.exclude(body.get("key"), body.get("reason"))
             return self._send_json(result, 200 if result["ok"] else 400)
         return self._send_json({"error": "not found"}, 404)
 
@@ -344,15 +399,22 @@ class Handler(BaseHTTPRequestHandler):
             return self._send_json(api.rankings())
         if path == "/api/excluded":
             return self._send_json(api.excluded())
-        match = re.fullmatch(r"/api/issue/(\d{1,6})", path)
+        match = re.fullmatch(
+            r"/api/issue/([A-Za-z0-9][A-Za-z0-9_.-]{0,99})/([A-Za-z0-9][A-Za-z0-9_.-]{0,99})/(\d{1,9})",
+            path,
+        )
         if match:
-            issue = api.issue(int(match.group(1)))
+            issue = api.issue(f"{match.group(1)}/{match.group(2)}#{match.group(3)}".lower())
             if issue is None:
                 return self._send_json({"error": "unknown issue"}, 404)
             return self._send_json(issue)
-        match = re.fullmatch(r"/api/deliverables/(\d{1,6})", path)
+        match = re.fullmatch(
+            r"/api/deliverables/([A-Za-z0-9][A-Za-z0-9_.-]{0,99})/([A-Za-z0-9][A-Za-z0-9_.-]{0,99})/(\d{1,9})",
+            path,
+        )
         if match:
-            return self._send_json(api.deliverable_files(int(match.group(1))))
+            key = f"{match.group(1)}/{match.group(2)}#{match.group(3)}".lower()
+            return self._send_json(api.deliverable_files(key))
         return self._send_json({"error": "not found"}, 404)
 
 

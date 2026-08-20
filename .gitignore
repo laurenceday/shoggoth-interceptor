@@ -5,6 +5,7 @@ __pycache__/
 *.py[cod]
 .loops/archives/
 .loops/board.json
+.loops/guardrails.json
 .loops/hexaemeron/
 .loops/runs/
 .loops/work/

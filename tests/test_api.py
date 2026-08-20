@@ -31,28 +31,41 @@ class ApiTest(unittest.TestCase):
     def tearDown(self):
         self.tmp.cleanup()
 
-    def test_roster_defaults_to_scope_pipelines(self):
+    def test_roster_keeps_optional_pipeline_metadata_without_filtering(self):
         roster = self.api.roster()
         pipes = {row["pipeline"] for row in roster["candidates"]}
-        self.assertEqual(pipes, {"Icebox", "Product Backlog"})
+        self.assertEqual(pipes, {"Icebox", "Product Backlog", "New Issues"})
 
     def test_roster_masks_excluded(self):
         numbers = [row["number"] for row in self.api.roster()["candidates"]]
         self.assertNotIn(606, numbers)   # excluded in fixture
         self.assertIn(789, numbers)
 
-    def test_roster_omits_out_of_scope_pipeline(self):
+    def test_roster_does_not_require_zenhub_scope(self):
         numbers = [row["number"] for row in self.api.roster()["candidates"]]
-        self.assertNotIn(858, numbers)   # New Issues in fixture
+        self.assertIn(858, numbers)
+
+    def test_roster_applies_configured_label_selection(self):
+        config = Path(self.tmp.name) / "config"
+        config.mkdir()
+        (config / "resolver.json").write_text(json.dumps({
+            "selection": {
+                "unassigned_only": True,
+                "include_labels": [],
+                "exclude_labels": ["Improvement"],
+            }
+        }))
+        numbers = [row["number"] for row in self.api.roster()["candidates"]]
+        self.assertNotIn(608, numbers)
 
     def test_issue_detail_carries_pipeline_and_deliverables(self):
-        issue = self.api.issue(789)
+        issue = self.api.issue("wildcat-finance/product#789")
         self.assertEqual(issue["pipeline"], "Product Backlog")
         self.assertEqual(issue["deliverables"], ["SUMMARY.md"])
         self.assertEqual(issue["comments"][0]["author"], "andfletcher")
 
     def test_unknown_issue_is_none(self):
-        self.assertIsNone(self.api.issue(999999))
+        self.assertIsNone(self.api.issue("wildcat-finance/product#999999"))
 
     def test_rankings_lists_top_level_docs_only(self):
         names = [d["name"] for d in self.api.rankings()]
@@ -63,7 +76,9 @@ class ApiTest(unittest.TestCase):
         self.assertIsNotNone(ages["board.json"])
 
     def test_no_secret_material_in_responses(self):
-        blob = json.dumps([self.api.roster(), self.api.issue(789), self.api.health()])
+        blob = json.dumps([
+            self.api.roster(), self.api.issue("wildcat-finance/product#789"), self.api.health()
+        ])
         for marker in (
             "GITHUB_READ_PAT",
             "GITHUB_ISSUE_REPLY_PAT",
@@ -74,9 +89,31 @@ class ApiTest(unittest.TestCase):
             self.assertNotIn(marker, blob)
 
     def test_deliverables_path_is_number_bound(self):
-        self.assertEqual(self.api.deliverable_files(123), [])
+        self.assertEqual(self.api.deliverable_files("wildcat-finance/product#123"), [])
         with self.assertRaises(ValueError):
             self.api.deliverable_files("../../etc")
+
+    def test_repository_identity_distinguishes_duplicate_numbers(self):
+        board_path = Path(self.tmp.name) / ".loops" / "board.json"
+        board = json.loads(board_path.read_text())
+        duplicate = dict(board["issues"][0])
+        duplicate["title"] = "same number, another repository"
+        duplicate["html_url"] = "https://github.com/example/other/issues/789"
+        board["version"] = 2
+        board["complete"] = True
+        board["repositories"] = ["wildcat-finance/product", "example/other"]
+        for issue in board["issues"]:
+            issue["repository"] = "wildcat-finance/product"
+            issue["key"] = f"wildcat-finance/product#{issue['number']}"
+        duplicate["repository"] = "example/other"
+        duplicate["key"] = "example/other#789"
+        board["issues"].append(duplicate)
+        board_path.write_text(json.dumps(board))
+
+        self.assertEqual(self.api.issue("example/other#789")["repository"], "example/other")
+        keys = {row["key"] for row in self.api.roster()["candidates"]}
+        self.assertIn("example/other#789", keys)
+        self.assertIn("wildcat-finance/product#789", keys)
 
 
 if __name__ == "__main__":

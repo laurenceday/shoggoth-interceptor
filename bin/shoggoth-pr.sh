@@ -1,6 +1,6 @@
 #!/bin/sh
 # The only sanctioned way for a loop to open a pull request. Runs the
-# wildcat-gate first, then hands everything through to gh pr create.
+# repository gate first, then hands everything through to gh pr create.
 # Pull-request creation does not pass through git hooks, so this wrapper is
 # the gate for the PR itself; the pre-push hook covers the branch push.
 #
@@ -21,5 +21,5 @@ if [ -z "$repo" ]; then
 fi
 
 "$ROOT/bin/verify-gate.py"
-"$ROOT/bin/wildcat-gate.sh" "$repo"
+"$ROOT/bin/repository-gate.py" "$repo"
 exec gh pr create "$@"

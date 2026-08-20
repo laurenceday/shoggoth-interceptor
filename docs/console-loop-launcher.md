@@ -1,5 +1,8 @@
 # Study: console loop launcher
 
+The loop prompt follows `config/resolver.json`; it is not tied to a ZenHub
+workspace or a particular GitHub organisation.
+
 Assuming, unless corrected:
 
 1. "Starting the Shoggoth loop" means spawning a detached headless Claude

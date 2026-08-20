@@ -43,8 +43,7 @@ async function loadHealth() {
   const health = await getJSON("/api/health");
   const ages = health.state_age_seconds;
   $("age").textContent =
-    "board " + fmtAge(ages["board.json"]) +
-    " · pipelines " + fmtAge(ages["pipelines.json"]);
+    "issues " + fmtAge(ages["board.json"]);
 }
 
 let selectedRow = null;
@@ -55,7 +54,7 @@ async function loadRoster() {
   body.textContent = "";
   for (const row of roster.candidates) {
     const tr = el("tr", "row");
-    tr.appendChild(el("td", "pipe", row.pipeline));
+    tr.appendChild(el("td", "pipe", row.repository));
     tr.appendChild(el("td", "num", "#" + row.number));
     const title = el("td", null, row.title + " ");
     for (const label of row.labels) title.appendChild(el("span", "label", label));
@@ -65,7 +64,7 @@ async function loadRoster() {
       if (selectedRow) selectedRow.classList.remove("selected");
       selectedRow = tr;
       tr.classList.add("selected");
-      loadIssue(row.number);
+      loadIssue(row.key);
     });
     body.appendChild(tr);
   }
@@ -73,13 +72,15 @@ async function loadRoster() {
             roster.excluded_count + " excluded", true);
 }
 
-async function loadIssue(number) {
-  const issue = await getJSON("/api/issue/" + number);
+async function loadIssue(key) {
+  const parts = key.split(/[\/#]/);
+  const issue = await getJSON("/api/issue/" + parts[0] + "/" + parts[1] + "/" + parts[2]);
   const box = $("detail");
   box.textContent = "";
   box.appendChild(el("h2", null, "#" + issue.number + " " + issue.title));
   const meta = el("p", "meta",
-    issue.pipeline + " · " + issue.author + " · updated " + issue.updated_at + " · ");
+    issue.repository + (issue.pipeline ? " · " + issue.pipeline : "") +
+    " · " + issue.author + " · updated " + issue.updated_at + " · ");
   if (/^https:\/\/github\.com\//.test(issue.html_url)) {
     const link = el("a", null, "open on GitHub");
     link.href = issue.html_url;
@@ -97,7 +98,7 @@ async function loadIssue(number) {
   }
   const deliverables = el("p", "meta",
     issue.deliverables.length
-      ? ".loops/deliverables/issue-" + issue.number + ": " + issue.deliverables.join(", ")
+      ? "deliverables for " + issue.key + ": " + issue.deliverables.join(", ")
       : "no deliverables yet");
   box.appendChild(deliverables);
 
@@ -111,8 +112,8 @@ async function loadIssue(number) {
     if (!input.value.trim()) { setStatus("reason required", false); return; }
     setStatus("excluding…");
     const result = await postJSON("/api/exclude",
-      { number: issue.number, reason: input.value.trim() });
-    setStatus(result.ok ? "excluded #" + issue.number : (result.error || "failed"), result.ok);
+      { key: issue.key, reason: input.value.trim() });
+    setStatus(result.ok ? "excluded " + issue.key : (result.error || "failed"), result.ok);
     if (result.ok) { loadRoster(); loadExcluded(); }
   });
   form.appendChild(input);
@@ -140,12 +141,12 @@ async function loadExcluded() {
   box.appendChild(el("h2", null, "Excluded (" + entries.length + ")"));
   for (const entry of entries) {
     box.appendChild(el("p", "meta",
-      "#" + entry.number + " — " + entry.reason + " (" + entry.excluded_at + ")"));
+      (entry.key || "#" + entry.number) + " — " + entry.reason + " (" + entry.excluded_at + ")"));
   }
 }
 
 $("btnRefresh").addEventListener("click", async () => {
-  setStatus("refreshing board + pipelines… (takes a minute)");
+  setStatus("refreshing configured GitHub repositories…");
   const result = await postJSON("/api/refresh");
   setStatus(result.ok ? "board refreshed" : "refresh failed — see server log", result.ok);
   if (result.ok) { loadHealth(); loadRoster(); }

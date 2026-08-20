@@ -1,73 +1,105 @@
+import importlib.util
+import io
 import json
-import subprocess
 import tempfile
 import unittest
 from pathlib import Path
+from unittest import mock
 
 REPO = Path(__file__).resolve().parent.parent
-GATE = REPO / "bin" / "wildcat-gate.sh"
+GATE = REPO / "bin" / "repository-gate.py"
 
 
-def gate(target, wildcat_gh_login=None):
-    with tempfile.NamedTemporaryFile("w", suffix=".json", delete=False) as fh:
-        json.dump({"wildcat_gh_login": wildcat_gh_login}, fh)
-        guardrails = fh.name
-    try:
-        return subprocess.run(
-            [str(GATE), target],
-            env={"PATH": "/usr/bin:/bin:/usr/local/bin:/opt/homebrew/bin",
-                 "HOME": str(Path.home()),
-                 "SHOGGOTH_GUARDRAILS_FILE": guardrails},
-            capture_output=True, text=True, timeout=30,
+def load_gate():
+    spec = importlib.util.spec_from_file_location("repository_gate", GATE)
+    mod = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(mod)
+    return mod
+
+
+class RepositoryGateTest(unittest.TestCase):
+    def setUp(self):
+        self.gate = load_gate()
+        self.policy = self.gate.validate_policy({
+            "version": 1,
+            "organizations": {
+                "wildcat-finance": {
+                    "mode": "sandbox-only",
+                    "sandbox": "wildcat-finance/shoggoth-sandbox",
+                    "github_login": "shoggoth-wildcat",
+                }
+            },
+        })
+
+    def test_unknown_organization_is_denied(self):
+        allowed, reason = self.gate.decide(
+            "laurenceday/shoggoth-interceptor", self.policy, "shoggoth-wildcat"
         )
-    finally:
-        Path(guardrails).unlink()
+        self.assertFalse(allowed)
+        self.assertIn("no write policy", reason)
 
-
-class WildcatGateTest(unittest.TestCase):
-    def test_denies_wildcat_finance_without_credential(self):
+    def test_every_non_sandbox_repository_is_denied(self):
         for target in (
-            "wildcat-finance/wildcat-app-v2",
+            "wildcat-finance/product",
             "git@github.com:wildcat-finance/v2-protocol.git",
-            "https://github.com/wildcat-finance/product",
             "https://github.com/Wildcat-Finance/WILDCAT-APP-V2.git",
         ):
-            result = gate(target)
-            self.assertEqual(result.returncode, 1, target)
-            self.assertIn("DENIED", result.stderr)
+            allowed, reason = self.gate.decide(target, self.policy, "shoggoth-wildcat")
+            self.assertFalse(allowed, target)
+            self.assertIn("only sandbox", reason)
 
-    def test_allows_the_skills_repo(self):
-        for target in (
-            "wildcat-finance/skills",
-            "https://github.com/wildcat-finance/skills.git",
+    def test_sandbox_requires_the_recorded_login(self):
+        target = "wildcat-finance/shoggoth-sandbox"
+        self.assertFalse(self.gate.decide(target, self.policy, "someone-else")[0])
+        self.assertTrue(self.gate.decide(target, self.policy, "shoggoth-wildcat")[0])
+
+    def test_malformed_policy_fails_closed(self):
+        bad = (
+            {},
+            {"version": 1, "organizations": []},
+            {"version": 1, "organizations": {"x": {"mode": "allow-all"}}},
+            {"version": 1, "organizations": {
+                "x": {"mode": "sandbox-only", "sandbox": "y/repo", "github_login": "user"}
+            }},
+        )
+        for policy in bad:
+            with self.assertRaises(ValueError):
+                self.gate.validate_policy(policy)
+
+    def test_target_normalisation_rejects_options_and_extra_path(self):
+        for target in ("--repo", "https://evil.test/x/y", "owner/repo/extra", "../x"):
+            with self.assertRaises(ValueError, msg=target):
+                self.gate.normalize_repo(target)
+
+
+class FirstRunSetupTest(unittest.TestCase):
+    def setUp(self):
+        self.gate = load_gate()
+        self.tmp = tempfile.TemporaryDirectory()
+        self.gate.LOCAL_POLICY = Path(self.tmp.name) / ".loops" / "guardrails.json"
+        self.gate.DEFAULT_POLICY = Path(self.tmp.name) / "state" / "guardrails.json"
+        self.gate.DEFAULT_POLICY.parent.mkdir()
+        self.gate.DEFAULT_POLICY.write_text('{"version": 1, "organizations": {}}\n')
+
+    def tearDown(self):
+        self.tmp.cleanup()
+
+    def test_no_aborts_without_writing(self):
+        with mock.patch("builtins.input", return_value="no"), self.assertRaisesRegex(
+            ValueError, "no write access was granted"
         ):
-            self.assertEqual(gate(target).returncode, 0, target)
+            self.gate.init_policy("wildcat-finance", "wildcat-finance/sandbox")
+        self.assertFalse(self.gate.LOCAL_POLICY.exists())
 
-    def test_allows_every_other_owner(self):
-        for target in (
-            "laurenceday/shoggoth-interceptor",
-            "https://github.com/someoneelse/thing",
-            "git@github.com:another-org/repo.git",
-        ):
-            self.assertEqual(gate(target).returncode, 0, target)
-
-    def test_denies_wildcat_finance_when_active_login_differs(self):
-        # The active gh login on this host is not "shoggoth-wildcat", so a
-        # configured credential that does not match must still deny.
-        result = gate("wildcat-finance/wildcat-app-v2",
-                      wildcat_gh_login="shoggoth-wildcat")
-        self.assertEqual(result.returncode, 1)
-        self.assertIn("is not the shoggoth", result.stderr)
-
-    def test_allows_wildcat_finance_when_active_login_matches(self):
-        active = subprocess.run(
-            ["gh", "api", "user", "--jq", ".login"],
-            capture_output=True, text=True, timeout=30,
-        ).stdout.strip()
-        if not active:
-            self.skipTest("no active gh login available")
-        result = gate("wildcat-finance/wildcat-app-v2", wildcat_gh_login=active)
-        self.assertEqual(result.returncode, 0)
+    def test_yes_records_one_sandbox_and_active_login(self):
+        with mock.patch("builtins.input", return_value="yes"), mock.patch.object(
+            self.gate, "active_login", return_value="laurenceday"
+        ), mock.patch("sys.stdout", new=io.StringIO()):
+            self.gate.init_policy("wildcat-finance", "wildcat-finance/sandbox")
+        policy = json.loads(self.gate.LOCAL_POLICY.read_text())
+        entry = policy["organizations"]["wildcat-finance"]
+        self.assertEqual(entry["sandbox"], "wildcat-finance/sandbox")
+        self.assertEqual(entry["github_login"], "laurenceday")
 
 
 if __name__ == "__main__":

@@ -7,7 +7,7 @@ GitHub.
 ## Protected boundary
 
 The Shoggoth cannot modify, rename, delete, disable, replace, or bypass
-[`bin/wildcat-gate.sh`](../bin/wildcat-gate.sh) or
+[`bin/repository-gate.py`](../bin/repository-gate.py) or
 [`bin/install-guardrails.sh`](../bin/install-guardrails.sh). Their hashes are
 pinned by [`bin/verify-gate.py`](../bin/verify-gate.py), and the repository
 workflow checks those hashes and the required references.
@@ -21,16 +21,17 @@ file or its pinned digest.
    [`bin/install-guardrails.sh`](../bin/install-guardrails.sh). It verifies the
    protected files, then installs the gate as the clone's pre-push hook.
    Worktrees inherit that hook.
-2. [`bin/wildcat-gate.sh`](../bin/wildcat-gate.sh) reads
-   [`state/guardrails.json`](../state/guardrails.json) and decides whether the
-   current GitHub identity may push to the target repository.
+2. [`bin/repository-gate.py`](../bin/repository-gate.py) reads the local policy
+   under `.loops/`, falling back to the default-deny
+   [`state/guardrails.json`](../state/guardrails.json). It permits only the
+   named sandbox and only for the GitHub login recorded during setup.
 3. Pull requests go through
    [`bin/shoggoth-pr.sh`](../bin/shoggoth-pr.sh). The wrapper verifies the
    protected files and runs the same gate before calling `gh pr create`.
 
-The gate applies to `wildcat-finance/*`, apart from
-`wildcat-finance/skills`. Repositories owned by other users and organisations
-are unaffected.
+An organisation with no policy is denied. Initialise one with
+`python3 bin/repository-gate.py init OWNER OWNER/SANDBOX`; answering no grants
+nothing. Every non-sandbox repository remains denied.
 
 When the gate denies a write, the work stays local under `.loops/` for the
 operator to review. The Shoggoth must not use `--no-verify`, raw pushes, raw

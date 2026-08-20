@@ -1,4 +1,8 @@
-# Runbook: shoggoth operator console
+# Runbook: original shoggoth operator console
+
+> Historical record: these steps built the first Wildcat/ZenHub console. The
+> current console reads repository-qualified GitHub issue state and does not
+> require ZenHub.
 
 Derived from `.loops/hexaemeron/study.md`. Four steps, one pull request each,
 stacked on `fiat/shoggoth-operator-console`. Every exit is a command.

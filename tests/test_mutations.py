@@ -42,25 +42,29 @@ class MutationTest(unittest.TestCase):
         result = self.api.refresh()
         self.assertTrue(result["ok"])
         commands = [call[2] for call in self.runner.calls]
-        self.assertEqual(commands, ["fetch", "fetch-pipelines"])
+        self.assertEqual(commands, ["fetch"])
         for call in self.runner.calls:
             self.assertEqual(call[1], str(self.root / "bin" / "shoggoth.py"))
 
     def test_exclude_valid(self):
-        result = self.api.exclude(789, "loop 1 complete")
+        result = self.api.exclude("wildcat-finance/product#789", "loop 1 complete")
         self.assertTrue(result["ok"])
-        self.assertEqual(self.runner.calls[0][2:], ["exclude", "789", "loop 1 complete"])
+        self.assertEqual(
+            self.runner.calls[0][2:],
+            ["exclude", "wildcat-finance/product#789", "loop 1 complete"],
+        )
 
     def test_exclude_rejects_non_integer(self):
-        for bad in ("789", 0, -4, 10_000_000, None, 7.5):
+        for bad in ("789", "../../etc#1", 0, -4, 10_000_000, None, 7.5):
             result = self.api.exclude(bad, "reason")
             self.assertFalse(result["ok"], bad)
         self.assertEqual(self.runner.calls, [])
 
     def test_exclude_bounds_reason(self):
-        self.assertFalse(self.api.exclude(789, "x" * 301)["ok"])
-        self.assertFalse(self.api.exclude(789, "")["ok"])
-        self.assertFalse(self.api.exclude(789, None)["ok"])
+        key = "wildcat-finance/product#789"
+        self.assertFalse(self.api.exclude(key, "x" * 301)["ok"])
+        self.assertFalse(self.api.exclude(key, "")["ok"])
+        self.assertFalse(self.api.exclude(key, None)["ok"])
         self.assertEqual(self.runner.calls, [])
 
     def test_archive_uses_fixed_argv(self):
@@ -75,7 +79,7 @@ class MutationTest(unittest.TestCase):
     def test_failed_subprocess_reported_truthfully(self):
         api = self.console.Api(self.root, runner=StubRunner(exit_code=1))
         self.assertFalse(api.refresh()["ok"])
-        self.assertFalse(api.exclude(789, "reason")["ok"])
+        self.assertFalse(api.exclude("wildcat-finance/product#789", "reason")["ok"])
         self.assertFalse(api.archive()["ok"])
 
 
@@ -83,7 +87,7 @@ class AtomicExcludeTest(unittest.TestCase):
     def test_shoggoth_exclude_writes_temp_then_rename(self):
         source = (REPO / "bin" / "shoggoth.py").read_text()
         write_block = source[source.index("def exclude("):source.index("def main(")]
-        self.assertIn(".replace(EXCLUDED)", write_block)
+        self.assertIn("atomic_write(EXCLUDED", write_block)
         self.assertNotIn("EXCLUDED.write_text", write_block)
 
 

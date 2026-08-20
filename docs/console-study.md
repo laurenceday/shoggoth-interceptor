@@ -1,4 +1,8 @@
-# Study: shoggoth operator console
+# Study: original shoggoth operator console
+
+> Historical record: this study describes the first Wildcat/ZenHub console.
+> The current generic GitHub resolver contract lives in `README.md`,
+> `CLAUDE.md`, and `config/resolver.json`. ZenHub is now optional metadata.
 
 Assuming, unless corrected:
 

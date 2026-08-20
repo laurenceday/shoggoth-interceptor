@@ -39,10 +39,10 @@ class GateIntegrityTest(unittest.TestCase):
         self.assertEqual(self.verifier.verify(REPO), [])
 
     def test_changed_gate_is_rejected(self):
-        gate = self.root / Path("bin/wildcat-gate.sh")
+        gate = self.root / Path("bin/repository-gate.py")
         gate.write_text(gate.read_text() + "\n# changed\n")
         self.assertIn(
-            "protected digest does not match the pinned value: bin/wildcat-gate.sh",
+            "protected digest does not match the pinned value: bin/repository-gate.py",
             self.verifier.verify(self.root),
         )
 
@@ -56,16 +56,16 @@ class GateIntegrityTest(unittest.TestCase):
 
     def test_missing_reference_is_rejected(self):
         readme = self.root / "README.md"
-        readme.write_text(readme.read_text().replace("`bin/wildcat-gate.sh`", "gate"))
+        readme.write_text(readme.read_text().replace("`bin/repository-gate.py`", "gate"))
         self.assertTrue(
             any("required gate reference missing" in error for error in self.verifier.verify(self.root))
         )
 
     def test_non_executable_gate_is_rejected(self):
-        gate = self.root / Path("bin/wildcat-gate.sh")
+        gate = self.root / Path("bin/repository-gate.py")
         gate.chmod(gate.stat().st_mode & ~stat.S_IXUSR)
         self.assertIn(
-            "protected file is not executable: bin/wildcat-gate.sh",
+            "protected file is not executable: bin/repository-gate.py",
             self.verifier.verify(self.root),
         )
 
@@ -78,11 +78,11 @@ class GateIntegrityTest(unittest.TestCase):
         )
 
     def test_symlinked_gate_is_rejected(self):
-        gate = self.root / Path("bin/wildcat-gate.sh")
+        gate = self.root / Path("bin/repository-gate.py")
         gate.unlink()
-        gate.symlink_to(REPO / "bin" / "wildcat-gate.sh")
+        gate.symlink_to(REPO / "bin" / "repository-gate.py")
         self.assertIn(
-            "protected file is not regular: bin/wildcat-gate.sh",
+            "protected file is not regular: bin/repository-gate.py",
             self.verifier.verify(self.root),
         )
 

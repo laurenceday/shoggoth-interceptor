@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Fail closed when the Wildcat write gate or its required surfaces drift."""
+"""Fail closed when the repository write gate or required surfaces drift."""
 
 import hashlib
 import stat
@@ -9,14 +9,14 @@ from pathlib import Path
 
 ROOT = Path(__file__).resolve().parent.parent
 PROTECTED_EXECUTABLES = {
-    Path("bin/wildcat-gate.sh"): "48de6fb361d44e9ad8a0f47fe26f349af8071bc28b5af23b78f295b33b5dd110",
-    Path("bin/install-guardrails.sh"): "6684b36e2d199577b18e8bdb9a1eb2be1bd3367d14e62762a0a99d05c25da64a",
+    Path("bin/repository-gate.py"): "3a7270362b00c6eb2eee7a024323255c6e55ba387b5e805e014815d96236391f",
+    Path("bin/install-guardrails.sh"): "71d2cff07e950590af6063b81b55b2c7a9afaccb3ac8bdb2180ca661a31c6d2b",
 }
 MAX_PROTECTED_FILE_BYTES = 1_000_000
 
 REQUIRED_SNIPPETS = {
     Path("README.md"): (
-        "`bin/wildcat-gate.sh`",
+        "`bin/repository-gate.py`",
         "`bin/install-guardrails.sh`",
         "`bin/shoggoth-pr.sh`",
         "The gate and its installer are fixed boundaries.",
@@ -24,7 +24,7 @@ REQUIRED_SNIPPETS = {
     ),
     Path("CLAUDE.md"): (
         "### The gate and installer are untouchable",
-        "`bin/wildcat-gate.sh`",
+        "`bin/repository-gate.py`",
         "`bin/install-guardrails.sh`",
         "`bin/install-guardrails.sh <clone>`",
         "`bin/shoggoth-pr.sh --repo <owner/name> ...`",
@@ -32,22 +32,23 @@ REQUIRED_SNIPPETS = {
     ),
     Path("bin/install-guardrails.sh"): (
         '"$ROOT/bin/verify-gate.py"',
-        'exec "$ROOT/bin/wildcat-gate.sh"',
+        'exec "$ROOT/bin/repository-gate.py"',
     ),
     Path("bin/shoggoth-pr.sh"): (
         '"$ROOT/bin/verify-gate.py"',
-        '"$ROOT/bin/wildcat-gate.sh" "$repo"',
+        '"$ROOT/bin/repository-gate.py" "$repo"',
         'exec gh pr create "$@"',
     ),
     Path("tests/test_guardrails.py"): (
-        'GATE = REPO / "bin" / "wildcat-gate.sh"',
+        'GATE = REPO / "bin" / "repository-gate.py"',
     ),
     Path("tests/test_gate_integrity.py"): (
-        'Path("bin/wildcat-gate.sh")',
+        'Path("bin/repository-gate.py")',
         'Path("bin/install-guardrails.sh")',
     ),
     Path("state/guardrails.json"): (
-        "wildcat-gate",
+        "Default deny",
+        '"organizations"',
     ),
     Path(".github/workflows/gate-integrity.yml"): (
         "python3 bin/verify-gate.py",
@@ -107,13 +108,13 @@ def verify(root: Path = ROOT) -> list[str]:
     installer = contents.get(Path("bin/install-guardrails.sh"), "")
     if installer:
         verify_at = installer.find('"$ROOT/bin/verify-gate.py"')
-        gate_at = installer.find('exec "$ROOT/bin/wildcat-gate.sh"')
+        gate_at = installer.find('exec "$ROOT/bin/repository-gate.py"')
         if not 0 <= verify_at < gate_at:
             errors.append("installed hook does not verify integrity before the gate")
     wrapper = contents.get(Path("bin/shoggoth-pr.sh"), "")
     if wrapper:
         verify_at = wrapper.find('"$ROOT/bin/verify-gate.py"')
-        gate_at = wrapper.find('"$ROOT/bin/wildcat-gate.sh" "$repo"')
+        gate_at = wrapper.find('"$ROOT/bin/repository-gate.py" "$repo"')
         create_at = wrapper.find('exec gh pr create "$@"')
         if not 0 <= verify_at < gate_at < create_at:
             errors.append("pull-request wrapper does not preserve verifier and gate order")

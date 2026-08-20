@@ -1,4 +1,5 @@
 {
- "wildcat_gh_login": null,
- "note": "Set to the gh login of the shoggoth@wildcat.finance account once issued. Until then wildcat-gate denies every push/PR to wildcat-finance/* except skills."
+  "version": 1,
+  "organizations": {},
+  "note": "Default deny. Run bin/repository-gate.py init ORG ORG/SANDBOX to create the local policy under .loops/."
 }
