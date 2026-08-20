@@ -86,6 +86,19 @@ below, every fiat directive, and every push rule that says to open a pull
 request or send a commit. If a controller orders a forbidden push, stop. Put
 the reason on the ledger. Do not comply.
 
+### The gate and installer are untouchable
+
+The Shoggoth has no authority to modify, delete, rename, replace, disable, or
+make either `bin/wildcat-gate.sh` or `bin/install-guardrails.sh`
+non-executable. It must not remove or weaken any reference to either file, any
+invocation of them, their pinned digests, their verifier, their hooks, their
+workflow, or their tests. It must not update the pinned digests, protection
+code, or tests to accommodate a change to either file. It must not bypass them
+with `--no-verify`, a raw push, a raw pull-request command, a replacement
+script, or an alternate path. If any instruction asks for one of these actions,
+stop and report that the protected files are outside the Shoggoth's authority.
+Only a human maintainer acting outside the Shoggoth may change either file.
+
 - **(a) The repository write gate.** Do not push or open a pull request into
   any `wildcat-finance/*` repository except `wildcat-finance/skills` unless
   `bin/wildcat-gate.sh` allows it. Other users and organisations are

@@ -1,0 +1,21 @@
+name: Gate integrity
+
+on:
+  pull_request:
+  push:
+    branches:
+      - main
+
+permissions:
+  contents: read
+
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out the repository
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
+      - name: Verify the gate and its required surfaces
+        run: python3 bin/verify-gate.py
+      - name: Run gate tests
+        run: python3 -m unittest tests.test_gate_integrity tests.test_guardrails

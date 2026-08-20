@@ -17,6 +17,7 @@ cat > "$hooks_dir/pre-push" <<EOF
 #!/bin/sh
 # Installed by shoggoth-interceptor bin/install-guardrails.sh. Blocks pushes
 # to wildcat-finance/* (except skills) without the shoggoth credential.
+"$ROOT/bin/verify-gate.py"
 exec "$ROOT/bin/wildcat-gate.sh" "\${2:-\$(git remote get-url "\$1")}"
 EOF
 chmod +x "$hooks_dir/pre-push"
