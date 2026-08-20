@@ -53,6 +53,48 @@ The console binds to `127.0.0.1` and nowhere else.
 It writes nothing to the issue tracker. External access stays in the 
 command-line board reader.
 
+## Hexaemeron and the Promise Machine
+
+The lo̶op does not im̷prov̴ise. Every ticket goes through Hexaemeron's Fiat
+delivery: study, runbook, then per-step implementation, audit, prose and push.
+Each step is green at both ends, each one arrives as its own pull request, and
+the receipts stay in `.loops/deliverables/issue-<n>/` where an operator reads
+what was actually run. A phase without a receipt d̷i̶d not happen.
+
+Six phase skills hold the parts of that loop to their own contracts.
+`protasis` decides what a study must answer before code is allowed to exist.
+`phylax` names every boundary a step opens and the control that closes it.
+`ephoros` says what the step must emit once it runs unattended. `metron`
+refuses a speed-motivated change with no recorded before and after. `elenchus`
+works a failure down to its cause and leaves a guard behind it. `hypomnema`
+decides what gets written down and where it lives. Th̘e loop cannot skip one:
+the controller emits a single directive at a time and takes a receipt for each.
+
+Ab̸ove all of them sits the Promise Machine, `promise-machine/v1`, the contract
+governing every skill in the suite. Its l̷aw is one sentence: no skill may claim
+more than its evidence establishes, or authorise a more consequential
+transition than that evidence warrants. Every operation declares a bounded
+promise, the evidence behind it, and the ne̶arest overclaim that evidence will
+not carry. Transitions are graded by consequence. A repository mutation wants
+tests, negative evidence and a recoverable change; a deployment or a security
+conclusion wants a fail-closed gate, recorded authority and independently
+inspectable evidence, and may never rest on model judgement. Missing, stale or
+mismatched evidence fails closed with the recovery path still open.
+
+That is th̷e point of the thing. A Shoggoth pull request carries its own
+evidence and is f̶orbidden from overstating it: an unexplained strengthening of
+a claim is a conformance failure, not a matter of taste. It does not pretend
+the code has been proven, and the contract is candid about that too, which is
+exactly why the r̵est of it can be taken at face value.
+
+**The local gates.** Enforced here, whatever the loop believes:
+`bin/wildcat-gate.sh` decides whether a push or pull request into a
+`wildcat-finance/*` repository is allowed, `bin/install-guardrails.sh` installs
+it as a pre-push hook on every clone, and n̶either file is within the
+Shoggoth's authority to change. Any loop touching `prisma/` runs
+`bin/migration-check.sh` from zero against a disposable Postgres. The console
+binds to `127.0.0.1` and writes nothing to the issue tracker.
+
 ## Check the exits
 
 ```bash
