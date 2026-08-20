@@ -1,7 +1,7 @@
 # Loop 1 ranking — 2026-08-19
 
 Board: wildcat-finance/product, 223 open issues, 0 excluded. Scores out of 100 across
-ease / benefit / unlock / fit (see CLAUDE.md). Top 15 recorded; everything else scored
+ease / benefit / dependency effect / fit (see CLAUDE.md). Top 15 recorded; everything else scored
 below 60 for this loop (vague scope, needs people/decisions, epic-sized, or stale).
 
 | # | Score | Issue | Reasoning |

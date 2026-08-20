@@ -7,7 +7,7 @@ marketing, hiring, and biz-dev tickets. Pipeline data now comes live from ZenHub
 (`bin/shoggoth.py fetch-pipelines`, 269 issues mapped across 8 pipelines).
 
 76 product-repo issues sit in Icebox + Product Backlog. After scope filtering,
-~20 are rankable tech debt. Scores /100 (ease / benefit / unlock / fit rubric,
+~20 are rankable tech debt. Scores /100 (ease / benefit / dependency effect / fit rubric,
 CLAUDE.md):
 
 | # | Score | Pipeline | Issue | Reasoning |
