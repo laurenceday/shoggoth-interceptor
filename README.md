@@ -1,4 +1,4 @@
-[![Watch install_me_coward.mp4](assets/install_me_coward-preview.gif)](assets/install_me_coward.mp4)
+https://github.com/user-attachments/assets/87e15a1f-874d-4150-88bf-e6063cb20a2a
 
 # Shoggoth Interceptor
 
