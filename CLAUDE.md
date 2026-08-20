@@ -23,9 +23,8 @@ can close it.
   `fetch-pipelines` against the "Product Planning" workspace, then refresh it
   beside `fetch` on every loop.
 - Take **tech debt only, frontend first**, regardless of how the ticket was
-  filed. Skip DAO, token raise, LBP, vesting, and Merkle-drop work. Skip
-  marketing, hiring, and biz-dev. Protocol-side tech debt is eligible, but it
-  ranks below frontend work.
+  filed. Skip marketing, hiring, and biz-dev. Protocol-side tech debt is
+  eligible, but it ranks below frontend work.
 - The board spans 6 repositories. Some Icebox and Product Backlog issues live
   outside `product`, in Product Planning and v2-protocol. They appear in
   `.loops/pipelines.json`; the roster currently covers `product` only.
