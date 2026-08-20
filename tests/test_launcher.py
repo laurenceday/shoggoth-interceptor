@@ -41,7 +41,7 @@ class LauncherTest(unittest.TestCase):
             ("smoke", self.console.SMOKE_PROMPT),
             ("loop", self.console.LOOP_PROMPT),
         ):
-            for pidfile in (self.root / "state" / "loops").glob("*.pid"):
+            for pidfile in (self.root / "loops" / "runs").glob("*.pid"):
                 pidfile.unlink()
             result = self.launcher.start(mode)
             self.assertTrue(result["ok"], result)

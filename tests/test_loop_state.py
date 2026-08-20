@@ -25,7 +25,7 @@ class LoopStateTest(unittest.TestCase):
         self.shoggoth = load_shoggoth()
         self.tmp = tempfile.TemporaryDirectory()
         root = Path(self.tmp.name)
-        state = root / "state"
+        state = root / "loops"
         state.mkdir()
         self.readme = root / "README.md"
         self.readme.write_text(
