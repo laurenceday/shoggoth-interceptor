@@ -2,31 +2,37 @@
  {
   "number": 789,
   "reason": "stacked PRs #367-#370 open on wildcat-app-v2, summary in .loops/deliverables/issue-789",
-  "excluded_at": "2026-08-19T03:16:17.611575+00:00"
+  "excluded_at": "2026-08-19T03:16:17.611575+00:00",
+  "key": "wildcat-finance/product#789"
  },
  {
   "number": 538,
   "reason": "stacked PRs #374-#375 open on wildcat-app-v2, summary in .loops/deliverables/issue-538",
-  "excluded_at": "2026-08-19T05:43:36.926420+00:00"
+  "excluded_at": "2026-08-19T05:43:36.926420+00:00",
+  "key": "wildcat-finance/product#538"
  },
  {
   "number": 442,
   "reason": "stacked PRs #378-#379 open on wildcat-app-v2, summary in .loops/deliverables/issue-442-443",
-  "excluded_at": "2026-08-19T06:05:12.029331+00:00"
+  "excluded_at": "2026-08-19T06:05:12.029331+00:00",
+  "key": "wildcat-finance/product#442"
  },
  {
   "number": 443,
   "reason": "shipped with #442; statement half recommended closed as superseded by exports epic (#851/#852)",
-  "excluded_at": "2026-08-19T06:05:12.069915+00:00"
+  "excluded_at": "2026-08-19T06:05:12.069915+00:00",
+  "key": "wildcat-finance/product#443"
  },
  {
   "number": 608,
   "reason": "stacked PRs #381-#382 open on wildcat-app-v2, summary in .loops/deliverables/issue-608",
-  "excluded_at": "2026-08-19T06:37:58.021018+00:00"
+  "excluded_at": "2026-08-19T06:37:58.021018+00:00",
+  "key": "wildcat-finance/product#608"
  },
  {
   "number": 696,
   "reason": "not in scope for shoggoth",
-  "excluded_at": "2026-08-20T07:34:58.421042+00:00"
+  "excluded_at": "2026-08-20T07:34:58.421042+00:00",
+  "key": "wildcat-finance/product#696"
  }
 ]
