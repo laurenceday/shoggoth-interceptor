@@ -10,7 +10,7 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parent.parent
 PROTECTED_EXECUTABLES = {
     Path("bin/repository-gate.py"): "104c4d0e2efaf907713f5055656e02171c4b1531a5b8f0f86e4990da8bf9a136",
-    Path("bin/install-guardrails.sh"): "aaa7db977251687f54a2d614f4caa42e77f7f974943c59044ec6c9f198372410",
+    Path("bin/install-guardrails.sh"): "efb07ed18f88750cb9aea2750cd247ee5af12f0ae52f818d3160946e690204f6",
 }
 MAX_PROTECTED_FILE_BYTES = 1_000_000
 
@@ -35,7 +35,9 @@ REQUIRED_SNIPPETS = {
         "Only a human maintainer acting outside the Shoggoth may change either file.",
     ),
     Path("bin/install-guardrails.sh"): (
-        '"$ROOT/bin/verify-gate.py"',
+        # Adjacency, not mere presence: an unguarded verify call is a hook that
+        # prints a digest mismatch and pushes anyway.
+        'set -eu\n"$ROOT/bin/verify-gate.py"',
         'exec "$ROOT/bin/repository-gate.py"',
     ),
     Path("bin/shoggoth-pr.sh"): (

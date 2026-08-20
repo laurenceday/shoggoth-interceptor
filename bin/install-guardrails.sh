@@ -9,7 +9,6 @@ set -eu
 ROOT=$(cd "$(dirname "$0")/.." && pwd)
 REPO_PATH="${1:?usage: install-guardrails.sh <repo path>}"
 
-hooks_dir=$(git -C "$REPO_PATH" rev-parse --git-common-dir)/hooks
 hooks_dir=$(cd "$REPO_PATH" && cd "$(git rev-parse --git-common-dir)" && pwd)/hooks
 mkdir -p "$hooks_dir"
 
@@ -18,6 +17,12 @@ cat > "$hooks_dir/pre-push" <<EOF
 # Installed by shoggoth-interceptor. Repositories in a protected organisation
 # may not receive a push unless recorded as exempt, and every push requires
 # the configured GitHub login.
+#
+# set -eu is load-bearing. Without it a failing verify-gate.py only prints, and
+# the push carries on into a gate whose digest no longer matches the pin, which
+# is the one case the pin exists for. The integrity check must abort the push,
+# not annotate it.
+set -eu
 "$ROOT/bin/verify-gate.py"
 exec "$ROOT/bin/repository-gate.py" "\${2:-\$(git remote get-url "\$1")}"
 EOF
