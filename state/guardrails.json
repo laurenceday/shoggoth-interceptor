@@ -1,5 +1,7 @@
 {
-  "version": 1,
-  "organizations": {},
-  "note": "Default deny. Run bin/repository-gate.py init ORG ORG/SANDBOX to create the local policy under .loops/."
+  "version": 2,
+  "mode": "protected-orgs",
+  "github_login": null,
+  "protected": {},
+  "note": "Default deny: no consent recorded, so every write is refused. Run bin/repository-gate.py init protect ORG, then init exempt ORG/REPO, to create the local policy under .loops/."
 }

@@ -56,14 +56,20 @@ command-line issue reader.
 
 ## First-run write policy
 
-Everything is denied until the operator names one sandbox repository:
+Everything is denied until the operator records consent. The operator names a
+protected organisation, then any repositories inside it exempt from that
+protection:
 
 ```bash
-python3 bin/repository-gate.py init OWNER OWNER/SANDBOX
+python3 bin/repository-gate.py init protect OWNER
+python3 bin/repository-gate.py init exempt OWNER/REPO
 ```
 
-The question records the active GitHub login and writes the local policy under
-`.loops/`. Every other repository in that organisation remains off-limits.
+Each question records the active GitHub login and writes the local policy
+under `.loops/`. Every repository in a protected organisation remains
+off-limits except the recorded exemptions; organisations the policy does not
+name are permitted, always bound to the recorded login. The gate refuses every
+merge outright — pull requests only, merged by a human after review.
 
 ## Hexaemeron and the Promise Machine
 
@@ -101,8 +107,9 @@ exactly why the rest of it can be taken at face value.
 
 **The local gates.** Enforced here, whatever the loop believes:
 `bin/repository-gate.py` decides whether a push or pull request against the
-exact target is allowed, and denies unknown organisations and every
-non-sandbox repository. `bin/install-guardrails.sh` installs it as a pre-push
+exact target is allowed, denies every repository in a protected organisation
+that is not recorded as exempt, denies everything before consent is recorded,
+and refuses merges outright. `bin/install-guardrails.sh` installs it as a pre-push
 hook on every clone, and neither file is within the Shoggoth's authority to
 change. While the policy denies writes, work lands as worktree branches and
 patch files for the operator rather than as a widened policy. Any loop touching
