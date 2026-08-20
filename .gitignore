@@ -1,7 +1,10 @@
-work/
-state/board.json
 .env
-state/loops/
-__pycache__/
-*.pyc
+.local/
 .DS_Store
+__pycache__/
+*.py[cod]
+loops/archives/
+loops/board.json
+loops/hexaemeron/
+loops/runs/
+loops/work/

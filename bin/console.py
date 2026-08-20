@@ -4,8 +4,8 @@
 Serves the board roster, ticket detail, rankings, exclusions, and deliverables
 as JSON over 127.0.0.1 only. Credentials are never read here; only
 bin/shoggoth.py touches .env, and no endpoint serialises anything outside the
-state/ and deliverables/ trees. Board text is returned as JSON strings and must
-be rendered as text by any client, never as HTML.
+`loops/` tree. Board text is returned as JSON strings and must be rendered as
+text by any client, never as HTML.
 
 Run: python3 bin/console.py [--port 8737]
 """
@@ -45,8 +45,8 @@ class Api:
 
     def __init__(self, root: Path, runner=run_argv):
         self.root = root
-        self.state = root / "state"
-        self.deliverables = root / "deliverables"
+        self.state = root / "loops"
+        self.deliverables = self.state / "deliverables"
         self.runner = runner
         self.shoggoth = root / "bin" / "shoggoth.py"
         self.archive_script = root / "bin" / "archive.sh"
@@ -164,7 +164,7 @@ LOOP_PROMPT = (
     "Run one Shoggoth Interceptor loop for the wildcat-finance product board. "
     "Follow CLAUDE.md in this repository exactly: refresh the board and "
     "pipelines, rank the in-scope candidates (Icebox and Product Backlog, "
-    "tech debt only, frontend first), record the ranking in deliverables/, "
+    "tech debt only, frontend first), record the ranking in loops/deliverables/, "
     "run the /hexaemeron:fiat delivery on the top pick with stacked PRs left "
     "open for review, write the deliverables summary, exclude the ticket, "
     "and run bin/archive.sh. Then stop."
@@ -189,7 +189,7 @@ class Launcher:
     """
 
     def __init__(self, root: Path, spawn=None):
-        self.loops_dir = root / "state" / "loops"
+        self.loops_dir = root / "loops" / "runs"
         self.spawn = spawn or self._spawn_detached
 
     def _spawn_detached(self, argv, log_path: Path) -> int:
@@ -228,7 +228,7 @@ class Launcher:
         (self.loops_dir / f"{name}.pid").write_text(str(pid))
         print(f"launched {name} (pid {pid}) -> {log_path}", file=sys.stderr)
         return {"ok": True, "name": name, "pid": pid,
-                "log": f"state/loops/{name}.log"}
+                "log": f"loops/runs/{name}.log"}
 
     def list(self):
         launches = []

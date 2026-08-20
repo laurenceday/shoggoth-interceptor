@@ -97,7 +97,7 @@ async function loadIssue(number) {
   }
   const deliverables = el("p", "meta",
     issue.deliverables.length
-      ? "deliverables/issue-" + issue.number + ": " + issue.deliverables.join(", ")
+      ? "loops/deliverables/issue-" + issue.number + ": " + issue.deliverables.join(", ")
       : "no deliverables yet");
   box.appendChild(deliverables);
 

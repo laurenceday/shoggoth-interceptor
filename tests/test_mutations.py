@@ -30,7 +30,7 @@ class MutationTest(unittest.TestCase):
         self.console = load_module("console")
         self.tmp = tempfile.TemporaryDirectory()
         self.root = Path(self.tmp.name)
-        (self.root / "state").mkdir()
+        (self.root / "loops").mkdir()
         (self.root / "bin").mkdir()
         self.runner = StubRunner()
         self.api = self.console.Api(self.root, runner=self.runner)
@@ -66,6 +66,11 @@ class MutationTest(unittest.TestCase):
     def test_archive_uses_fixed_argv(self):
         self.api.archive()
         self.assertEqual(self.runner.calls, [[str(self.root / "bin" / "archive.sh")]])
+
+    def test_archives_stay_under_loops(self):
+        source = (REPO / "bin" / "archive.sh").read_text()
+        self.assertIn('$ROOT/loops/archives', source)
+        self.assertNotIn('$ROOT/archives', source)
 
     def test_failed_subprocess_reported_truthfully(self):
         api = self.console.Api(self.root, runner=StubRunner(exit_code=1))

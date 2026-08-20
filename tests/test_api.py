@@ -20,12 +20,12 @@ class ApiTest(unittest.TestCase):
         self.console = load_console()
         self.tmp = tempfile.TemporaryDirectory()
         root = Path(self.tmp.name)
-        (root / "state").mkdir()
+        (root / "loops").mkdir()
         for name in ("board.json", "pipelines.json", "excluded.json"):
-            (root / "state" / name).write_text((FIXTURES / name).read_text())
-        (root / "deliverables" / "issue-789").mkdir(parents=True)
-        (root / "deliverables" / "issue-789" / "SUMMARY.md").write_text("done")
-        (root / "deliverables" / "loop-1-ranking.md").write_text("# ranking")
+            (root / "loops" / name).write_text((FIXTURES / name).read_text())
+        (root / "loops" / "deliverables" / "issue-789").mkdir(parents=True)
+        (root / "loops" / "deliverables" / "issue-789" / "SUMMARY.md").write_text("done")
+        (root / "loops" / "deliverables" / "loop-1-ranking.md").write_text("# ranking")
         self.api = self.console.Api(root)
 
     def tearDown(self):
