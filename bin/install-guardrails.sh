@@ -15,8 +15,9 @@ mkdir -p "$hooks_dir"
 
 cat > "$hooks_dir/pre-push" <<EOF
 #!/bin/sh
-# Installed by shoggoth-interceptor. Only the configured organisation sandbox
-# may receive a push, and only from the configured GitHub login.
+# Installed by shoggoth-interceptor. Repositories in a protected organisation
+# may not receive a push unless recorded as exempt, and every push requires
+# the configured GitHub login.
 "$ROOT/bin/verify-gate.py"
 exec "$ROOT/bin/repository-gate.py" "\${2:-\$(git remote get-url "\$1")}"
 EOF

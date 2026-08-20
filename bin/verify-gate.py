@@ -9,8 +9,8 @@ from pathlib import Path
 
 ROOT = Path(__file__).resolve().parent.parent
 PROTECTED_EXECUTABLES = {
-    Path("bin/repository-gate.py"): "3a7270362b00c6eb2eee7a024323255c6e55ba387b5e805e014815d96236391f",
-    Path("bin/install-guardrails.sh"): "71d2cff07e950590af6063b81b55b2c7a9afaccb3ac8bdb2180ca661a31c6d2b",
+    Path("bin/repository-gate.py"): "104c4d0e2efaf907713f5055656e02171c4b1531a5b8f0f86e4990da8bf9a136",
+    Path("bin/install-guardrails.sh"): "aaa7db977251687f54a2d614f4caa42e77f7f974943c59044ec6c9f198372410",
 }
 MAX_PROTECTED_FILE_BYTES = 1_000_000
 
@@ -28,6 +28,10 @@ REQUIRED_SNIPPETS = {
         "`bin/install-guardrails.sh`",
         "`bin/install-guardrails.sh <clone>`",
         "`bin/shoggoth-pr.sh --repo <owner/name> ...`",
+        "`python3 bin/repository-gate.py init protect ORG`",
+        "`python3 bin/repository-gate.py init exempt ORG/REPO`",
+        "The gate refuses every merge it is asked to evaluate",
+        "The Shoggoth opens pull requests and never merges them.",
         "Only a human maintainer acting outside the Shoggoth may change either file.",
     ),
     Path("bin/install-guardrails.sh"): (
@@ -48,7 +52,8 @@ REQUIRED_SNIPPETS = {
     ),
     Path("state/guardrails.json"): (
         "Default deny",
-        '"organizations"',
+        '"protected"',
+        '"protected-orgs"',
     ),
     Path(".github/workflows/gate-integrity.yml"): (
         "python3 bin/verify-gate.py",

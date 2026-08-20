@@ -23,15 +23,27 @@ file or its pinned digest.
    Worktrees inherit that hook.
 2. [`bin/repository-gate.py`](../bin/repository-gate.py) reads the local policy
    under `.loops/`, falling back to the default-deny
-   [`state/guardrails.json`](../state/guardrails.json). It permits only the
-   named sandbox and only for the GitHub login recorded during setup.
+   [`state/guardrails.json`](../state/guardrails.json). The policy names
+   protected organisations and, per organisation, the repositories exempt from
+   that protection. A repository in a protected organisation is denied unless
+   recorded as exempt; an organisation the policy does not name is permitted.
+   Every write requires the GitHub login recorded during setup, nothing is
+   permitted before consent is recorded, and a merge is refused on every
+   target.
 3. Pull requests go through
    [`bin/shoggoth-pr.sh`](../bin/shoggoth-pr.sh). The wrapper verifies the
    protected files and runs the same gate before calling `gh pr create`.
 
-An organisation with no policy is denied. Initialise one with
-`python3 bin/repository-gate.py init OWNER OWNER/SANDBOX`; answering no grants
-nothing. Every non-sandbox repository remains denied.
+Consent goes through `init`, the only writer of policy:
+`python3 bin/repository-gate.py init protect ORG` write-protects an
+organisation and `python3 bin/repository-gate.py init exempt ORG/REPO` exempts
+one repository inside it. Answering no grants nothing, and a policy widened by
+hand-editing the JSON fails validation.
+
+The gate refuses merges, but a pre-push hook cannot stop one: `gh pr merge` is
+an API call, not a push. The prohibition is enforced by branch protection on
+the protected organisation's repositories requiring a human review, configured
+by the operator on GitHub; until that is in place it is stated policy only.
 
 When the gate denies a write, the work stays local under `.loops/` for the
 operator to review. The Shoggoth must not use `--no-verify`, raw pushes, raw

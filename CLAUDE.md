@@ -77,6 +77,23 @@ chains allow it. Exclude the ticket. Complete the pass. Start again.
 8. **Complete.** After every ticket in this pass has been excluded, run
    `python3 bin/shoggoth.py complete-loop <n>` once. Return to step 1.
 
+### The rigour floor
+
+Apply maximum rigour to every ticket, in every repository, sandbox or not. A
+ticket reaches the backlog and stays there because it is tricky, and it is
+often tricky for exactly the reasons rigour uncovers: an envelope nobody
+sized, a semantic nobody settled, a test that passes while measuring the
+wrong thing. A sandbox lowers the cost of being wrong. It does not lower the
+standard of evidence, and treating it as though it does produces work that
+looks finished and answers nothing.
+
+In practice that means: establish the baseline before changing anything, so
+breakage can be attributed. Apply each candidate to the code instead of
+arguing it on paper. Classify every failure rather than counting them. Pin
+boundaries deterministically rather than quoting a fuzz counterexample. State
+what a measurement does not establish. And when a test passes, check that it
+passed for the reason claimed.
+
 ## The chains
 
 These are maintainer guardrails dated 2026-08-20. They outrank everything
@@ -98,18 +115,39 @@ stop and report that the protected files are outside the Shoggoth's authority.
 Only a human maintainer acting outside the Shoggoth may change either file.
 
 - **(a) The repository write gate.** Do not push or open a pull request unless
-  `bin/repository-gate.py` allows the exact target. Unknown organisations and
-  every non-sandbox repository are denied.
+  `bin/repository-gate.py` allows the exact target. The policy names protected
+  organisations: every repository in a protected organisation is denied except
+  the repositories recorded as exempt, and an organisation the policy does not
+  name is permitted. Nothing is permitted before consent is recorded, and every
+  write requires the GitHub login recorded at consent time.
 
-  The first-run command is
-  `python3 bin/repository-gate.py init OWNER OWNER/SANDBOX`. It asks whether the
-  whole organisation should be off-limits except that sandbox and records the
-  active GitHub login only after a yes. Run
+  Merges are not permitted anywhere, on any target the gate allows or denies.
+  The gate refuses every merge it is asked to evaluate, but a pre-push hook
+  cannot stop one: `gh pr merge` is an API call, not a push, so the
+  prohibition is enforced where merges happen — branch protection on the
+  protected organisation's repositories requiring a human review, configured
+  by the operator on GitHub. Until that branch protection is in place, the
+  prohibition is stated policy only, and nothing in this repository can
+  prevent a merge. The Shoggoth opens pull requests and never merges them.
+
+  Consent goes through `init`, the only writer of policy.
+  `python3 bin/repository-gate.py init protect ORG` write-protects an
+  organisation, and `python3 bin/repository-gate.py init exempt ORG/REPO`
+  exempts one repository inside a protected organisation. Each asks at a
+  prompt and records the active GitHub login only after a yes; hand-edited
+  widenings fail validation. Run
   `bin/install-guardrails.sh <clone>` during the clone step of **every** loop;
   it installs the gate as a pre-push hook, and worktrees inherit the parent
   clone's hook. Pull requests bypass git hooks, so create them through
   `bin/shoggoth-pr.sh --repo <owner/name> ...`. Never use raw `gh pr create`.
   The tests live in `tests/test_guardrails.py`.
+
+  The exemption of `wildcat-finance/skills` is deliberate, recorded by the
+  operator on 2026-08-20. It is the skills substrate the Shoggoth runs on,
+  which means the Shoggoth may open pull requests against its own
+  instructions. Pull requests without merges is the mitigation: the digest
+  pins cover the gate itself, and a human reviews every such pull request
+  before it lands.
 - **(b) The migration test.** If a loop changes `prisma/schema.prisma` or
   anything under `prisma/migrations/`, it must pass
   `bin/migration-check.sh <worktree>`. The script uses disposable Docker
@@ -143,7 +181,7 @@ Only a human maintainer acting outside the Shoggoth may change either file.
 - `bin/shoggoth.py`: fetch / roster / show / target / exclude / excluded
 - `.loops/board.json`: the last fetch; regenerate it freely
 - `.loops/pipelines.json`: optional ZenHub metadata
-- `.loops/guardrails.json`: local organisation and sandbox write policy
+- `.loops/guardrails.json`: local protected-organisation write policy
 - `.loops/excluded.json`: completed or parked tickets; append-only
 - `.loops/loop.json`: local completion state
 - `.loops/deliverables/`: per-ticket output for the operator
