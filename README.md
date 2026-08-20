@@ -23,7 +23,8 @@ The whole lo̒op protoc̴ol,̉ i̮nclu͕di̵ng the sh̶ar̵p edgēs̷,̟ l̸ive
   from `state/guardrails.json`.
 - `bin/install-guardrails.sh` installs that gate as a pre-push hook in a
   clone. Its worktrees inherit the hook. Every loop installs it during the
-  clone step.
+  clone step. The gate and its installer are fixed boundaries. The Shoggoth
+  may neither change nor bypass either file.
 - `bin/shoggoth-pr.sh` is the only sanctioned route to a pull request. It
   runs the gate before `gh pr create`.
 - `bin/migration-check.sh` spins up disposable Docker Postgres, applies every

@@ -20,5 +20,6 @@ if [ -z "$repo" ]; then
     exit 1
 fi
 
+"$ROOT/bin/verify-gate.py"
 "$ROOT/bin/wildcat-gate.sh" "$repo"
 exec gh pr create "$@"
