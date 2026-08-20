@@ -1,3 +1,5 @@
+[![Watch install_me_coward.mp4](assets/install_me_coward-preview.gif)](assets/install_me_coward.mp4)
+
 # Shoggoth Interceptor
 
 Tooling for working the Wildcat ZenHub Product Planning board down: rank the
