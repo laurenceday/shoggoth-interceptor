@@ -37,7 +37,7 @@ the run branch: two clean rounds.
 ## What the operator should do
 
 1. Review and merge #374 then #375, then the run branch into `main`
-   (fiat state parked in `loops/work/wildcat-app-v2-538/.hexaemeron`, resume with
+   (fiat state parked in `.loops/work/wildcat-app-v2-538/.hexaemeron`, resume with
    `hexctl resume` to bring the stack down on the ledger).
 2. Eyeball the blocked view on a testnet fixed-term market; copy tweaks are
    one i18n key each under

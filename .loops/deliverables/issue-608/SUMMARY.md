@@ -36,7 +36,7 @@ green; tsc and eslint clean. Audit log on the run branch: two clean rounds.
 ## Operator actions
 
 1. Review and merge #381 then #382, then the run branch into `main`
-   (state in `loops/work/wildcat-app-v2-608/.hexaemeron`, `hexctl resume`).
+   (state in `.loops/work/wildcat-app-v2-608/.hexaemeron`, `hexctl resume`).
 2. Confirm the lesser/greater reading above on the ticket, then close
    #608.
 3. Repeat flag (also raised in loops 2 and 3): the deposit modal's

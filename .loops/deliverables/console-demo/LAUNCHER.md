@@ -8,7 +8,7 @@ launcher.
   panel showed the session as running.
 - The spawned process was a real detached headless Claude Code session
   (`claude -p <smoke prompt> --permission-mode acceptEdits`). Its log,
-  `loops/runs/smoke-20260819-034048.log`, ended with exactly the expected
+  `.loops/runs/smoke-20260819-034048.log`, ended with exactly the expected
   marker: `SHOGGOTH-SMOKE-OK`.
 - After the session exited (and the console server was restarted in
   between), GET /api/loops still reported the launch, now as finished, with

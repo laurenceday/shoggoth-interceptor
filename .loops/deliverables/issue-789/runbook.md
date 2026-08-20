@@ -72,10 +72,10 @@ whole delivery is demonstrated.
 src/utils/borrowerRestrictionState.test.ts src/utils/restrictionCarveOut.test.ts`
 green; `npx tsc --noEmit` clean; stacked PRs open for review with the audit
 log; deliverables summary written to the interceptor repo
-(`loops/deliverables/issue-789/SUMMARY.md`).
+(`.loops/deliverables/issue-789/SUMMARY.md`).
 **Files.** Override toggle in
 `src/app/[locale]/admin/components/EditBorrowerModal` wired to PUT via a new
-admin hook; `loops/deliverables/issue-789/` in the interceptor repo (summary,
+admin hook; `.loops/deliverables/issue-789/` in the interceptor repo (summary,
 study copy, operator instructions).
 **Tests.** Admin hook fires PUT with token; modal renders current computed
 state; full targeted suite re-run as the demonstration.

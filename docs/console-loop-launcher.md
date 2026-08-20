@@ -24,7 +24,7 @@ the ability to actually start the Shoggoth loop." The console can show the
 board, record exclusions, and cut archives, but the loop itself still needs
 someone to drive a Claude session by hand. The build adds a Start-loop
 action: POST `/api/start-loop` spawns a detached headless Claude Code
-session with the loop prompt, logs land in `loops/runs/`, GET `/api/loops`
+session with the loop prompt, logs land in `.loops/runs/`, GET `/api/loops`
 lists past and running launches, and the dashboard grows a Start button plus
 a launch list. A working prototype means the smoke mode launched from the
 page reaches its expected marker in the log. Proof:
@@ -39,7 +39,7 @@ page reaches its expected marker in the log. Proof:
   session at.
 - `claude` CLI 2.1.234 on this host: `claude -p <prompt> --permission-mode
   acceptEdits` runs headless; stdout is the transcript text.
-- The console fiat run's demo evidence layout in `loops/deliverables/console-demo/`.
+- The console fiat run's demo evidence layout in `.loops/deliverables/console-demo/`.
 
 ## 3. Constraints and non-goals
 
@@ -54,7 +54,7 @@ page reaches its expected marker in the log. Proof:
 
 1. **Spawn `claude -p` detached from the console process.** Chosen. One
    subprocess.Popen with fixed argv, stdout and stderr to a log file under
-   `loops/runs/`, a pidfile beside it. Trade named: the console process
+   `.loops/runs/`, a pidfile beside it. Trade named: the console process
    owns nothing after spawn, so status is inferred from the pid and log
    rather than managed; a crashed console leaves the loop running, which is
    wanted.
@@ -73,7 +73,7 @@ page reaches its expected marker in the log. Proof:
 - **Secrets.** The spawned session inherits the operator's environment by
   design (it needs gh and the .env keys to work the loop); the console
   still never reads or serialises them, and log files live in gitignored
-  `loops/runs/`. Log filenames are timestamped, content is the session
+  `.loops/runs/`. Log filenames are timestamped, content is the session
   transcript.
 - **Unattended permissions.** acceptEdits is deliberate and documented;
   the launched session cannot approve its own dangerous actions.
@@ -86,7 +86,7 @@ page reaches its expected marker in the log. Proof:
 - Launch: one spawned headless Claude Code session with a loop prompt.
 - Smoke mode: launch that only proves the spawn pipeline, then exits.
 - Loop mode: launch that runs one full interceptor loop per CLAUDE.md.
-- Pidfile: `loops/runs/<name>.pid` beside `<name>.log`.
+- Pidfile: `.loops/runs/<name>.pid` beside `<name>.log`.
 
 ## 7. Sources
 
