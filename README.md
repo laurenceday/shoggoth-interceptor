@@ -2,54 +2,63 @@ https://github.com/user-attachments/assets/87e15a1f-874d-4150-88bf-e6063cb20a2a
 
 # Shoggoth Interceptor
 
-Tooling for working the Wildcat ZenHub Product Planning board down: rank the
-open tickets, work one per loop through a Fiat delivery, store the deliverables
-locally, exclude it, repeat. The loop protocol is in [CLAUDE.md](CLAUDE.md).
+The board is full. The loop is hungry.
 
-## Pieces
+Shoggoth reads the Wildcat ZenHub Product Planning board, ranks the open
+tickets, and takes them one at a time through a Fiat delivery. Deliverables
+stay local. The ticket goes on the exclusion list. Then it starts again.
 
-- `bin/shoggoth.py`: board reader with `fetch`, `fetch-pipelines`, `roster`,
-  `show <n>`, `exclude <n> <reason>`, and `excluded` subcommands.
-- `bin/console.py`: the operator console (see below).
-- `bin/archive.sh`: rolling archive zip of scratchpads, deliverables, state.
-- `bin/wildcat-gate.sh`: denies pushes and PRs to `wildcat-finance/*`
-  (except `skills`) without the shoggoth gh credential recorded in
-  `state/guardrails.json`.
-- `bin/install-guardrails.sh`: installs the gate as a pre-push hook in a
-  clone (its worktrees inherit it); part of every loop's clone step.
-- `bin/shoggoth-pr.sh`: the only sanctioned PR path; runs the gate, then
-  `gh pr create`.
-- `bin/migration-check.sh`: disposable Docker-Postgres migration test that
-  applies all Prisma migrations from zero and asserts they reproduce
-  `schema.prisma`. Mandatory for any loop touching `prisma/`.
-- `state/`: board cache, pipeline map, exclusion list.
-- `deliverables/`: per-ticket outputs an operator attaches to issues by hand.
-- `docs/console-study.md` and `docs/console-runbook.md`: the console's spec.
+The whole loop protocol, including the sharp edges, lives in
+[CLAUDE.md](CLAUDE.md).
 
-## Operator console
+## What's lurking in here
 
-One local instance per operator:
+- `bin/shoggoth.py` reads the board. It knows `fetch`, `fetch-pipelines`,
+  `roster`, `show <n>`, `exclude <n> <reason>`, and `excluded`.
+- `bin/console.py` gives the operator a window into the loop.
+- `bin/archive.sh` cuts a rolling zip of the scratchpads, deliverables, and
+  state.
+- `bin/wildcat-gate.sh` stops pushes and pull requests to
+  `wildcat-finance/*`, apart from `skills`, unless the shoggoth GitHub
+  credential is recorded in `state/guardrails.json`.
+- `bin/install-guardrails.sh` installs that gate as a pre-push hook in a
+  clone. Its worktrees inherit the hook. Every loop installs it during the
+  clone step.
+- `bin/shoggoth-pr.sh` is the only sanctioned route to a pull request. It
+  runs the gate before `gh pr create`.
+- `bin/migration-check.sh` spins up disposable Docker Postgres, applies every
+  Prisma migration from zero, and checks the result against `schema.prisma`.
+  Any loop that touches `prisma/` must run it.
+- `state/` remembers the board, pipeline map, and exclusion list.
+- `deliverables/` keeps each ticket's output until an operator attaches it to
+  the issue by hand.
+- `docs/console-study.md` and `docs/console-runbook.md` hold the console spec.
+
+## One operator. One console.
+
+Run it locally:
 
 ```bash
 python3 bin/console.py
 ```
 
-Then open http://127.0.0.1:8737. The console shows the scoped roster (Icebox
-and Product Backlog, tech debt first), rankings, ticket detail with comments,
-deliverables, and the exclusion list, and can refresh the board, record an
-exclusion, and cut an archive. It binds 127.0.0.1 only, reads credentials from
-nothing (only `bin/shoggoth.py` touches `.env`), and never writes to GitHub or
-ZenHub.
+Then open http://127.0.0.1:8737. The console shows the scoped roster from
+Icebox and Product Backlog, with tech debt first. It shows rankings, ticket
+details and comments, deliverables, and the exclusion list. From there an
+operator can refresh the board, record an exclusion, or cut an archive.
 
-## Credentials each operator brings
+The console binds to `127.0.0.1` and nowhere else. It reads no credentials and
+writes nothing to GitHub or ZenHub. Only `bin/shoggoth.py` touches `.env`.
 
-- `.env` with `WILDCAT_ZENHUB_READ_ONLY_PAT` (GitHub fine-grained PAT, read
-  access to `wildcat-finance/product`) and `ZENHUB_API_KEY` (ZenHub GraphQL
-  personal key for the Product Planning workspace).
-- A `gh` login with push access, used only by agent ticket loops, never by the
-  console.
+## Bring your own keys
 
-## Tests
+- `.env` needs `WILDCAT_ZENHUB_READ_ONLY_PAT`, a fine-grained GitHub token
+  with read access to `wildcat-finance/product`, and `ZENHUB_API_KEY`, a
+  ZenHub GraphQL personal key for the Product Planning workspace.
+- Agent ticket loops need a `gh` login with push access. The console never
+  uses it.
+
+## Check the exits
 
 ```bash
 python3 -m unittest discover -s tests
