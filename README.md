@@ -1,5 +1,9 @@
 # Shoggoth Interceptor
 
+*"So watching the automation choose to work on something and start pushing
+PRs... on the one hand, that's how the big players are doing things now... it
+was... ‘oh, this thing is now in our space’."*
+
 https://github.com/user-attachments/assets/87e15a1f-874d-4150-88bf-e6063cb20a2a
 
 The board is full. The loop is hungry.
