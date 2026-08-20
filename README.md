@@ -1,5 +1,3 @@
-https://github.com/user-attachments/assets/87e15a1f-874d-4150-88bf-e6063cb20a2a
-
 # Shoggoth Interceptor
 
 *"So watching the automation choose to work on something and start pushing
