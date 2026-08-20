@@ -18,14 +18,10 @@ The whole lo̒op protoc̴ol,̉ i̮nclu͕di̵ng the sh̶ar̵p edgēs̷,̟ l̸ive
   `roster`, `show <n>`, `exclude <n> <reason>`, and `excluded`.
 - `bin/console.py` gives the operator a window into the loop.
 - `bin/archive.sh` cuts a rolling local zip under `.loops/archives/`.
-- `bin/wildcat-gate.sh` enforces the repository's push and pull-request rules
-  from `state/guardrails.json`.
-- `bin/install-guardrails.sh` installs that gate as a pre-push hook in a
-  clone. Its worktrees inherit the hook. Every loop installs it during the
-  clone step. The gate and its installer are fixed boundaries. The Shoggoth
-  may neither change nor bypass either file.
-- `bin/shoggoth-pr.sh` is the only sanctioned route to a pull request. It
-  runs the gate before `gh pr create`.
+- [`docs/guardrails.md`](docs/guardrails.md) explains the
+  `bin/wildcat-gate.sh`, `bin/install-guardrails.sh`, and `bin/shoggoth-pr.sh`
+  chain. The gate and its installer are fixed boundaries.
+  The Shoggoth may neither change nor bypass either file.
 - `bin/migration-check.sh` spins up disposable Docker Postgres, applies every
   Prisma migration from zero, and checks the result against `schema.prisma`.
   Any loop that touches `prisma/` must run it.
