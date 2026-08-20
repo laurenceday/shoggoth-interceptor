@@ -1,16 +1,22 @@
 # Shoggoth Interceptor
 
-*"So watching the automation choose to work on something and start pushing
-PRs... on the one hand, that's how the big players are doing things now... it
-was... ‘oh, this thing is now in our space’."*
-
-https://github.com/user-attachments/assets/87e15a1f-874d-4150-88bf-e6063cb20a2a
+![Meet our new full-stack developer.](assets/shoggoth-2-1.png)
 
 The bȯard is̔ full. The loo͑p i̦s hungry.
 
 Sh̜oggoth re̵ads the Wil̍dcat Zḛn̵Hu̔b Pr̳o̷du̷ct Planńin̅g board, ranks the o̸pen tickets,͙ an̴d̶ t̴akeͫs tͣhem on̴e at a tĩme͙ throug̷h a Fiat deliv́er̚y. Deliv̵e͒ra̸b̞l̶ḛs śt̓a̷y͑ local. Th̘eͮ ticket goes on the exclusi͒on list.̎ Then it sta͇rts again.
 
 The whole lo̒op protoc̴ol,̉ i̮nclu͕di̵ng the sh̶ar̵p edgēs̷,̟ l̸ives in̸ ČLAUD̳E̸.͔m̘d.́
+
+<div align="center">
+  <video src="https://github.com/user-attachments/assets/87e15a1f-874d-4150-88bf-e6063cb20a2a"></video>
+  
+  Shoutout to [@banteg](https://github.com/banteg) for what remains the best music video of the year
+</div>
+
+*"So watching the automation choose to work on something and start pushing
+PRs... on the one hand, that's how the big players are doing things now... it
+was... ‘oh, this thing is now in our space’."* - [@Kethic](https://github.com/kethcode)
 
 ## What's lurking in here
 
@@ -42,8 +48,10 @@ Icebox and Product Backlog, with tech debt first. It shows rankings, ticket
 details and comments, deliverables, and the exclusion list. From there an
 operator can refresh the board, record an exclusion, or cut an archive.
 
-The console binds to `127.0.0.1` and nowhere else. It writes nothing to the
-issue tracker. External access stays in the command-line board reader.
+The console binds to `127.0.0.1` and nowhere else.
+
+It writes nothing to the issue tracker. External access stays in the 
+command-line board reader.
 
 ## Check the exits
 
