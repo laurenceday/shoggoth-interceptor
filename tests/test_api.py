@@ -64,7 +64,13 @@ class ApiTest(unittest.TestCase):
 
     def test_no_secret_material_in_responses(self):
         blob = json.dumps([self.api.roster(), self.api.issue(789), self.api.health()])
-        for marker in ("WILDCAT_ZENHUB_READ_ONLY_PAT", "ZENHUB_API_KEY", "github_pat"):
+        for marker in (
+            "GITHUB_READ_PAT",
+            "GITHUB_ISSUE_REPLY_PAT",
+            "WILDCAT_ZENHUB_READ_ONLY_PAT",
+            "ZENHUB_API_KEY",
+            "github_pat",
+        ):
             self.assertNotIn(marker, blob)
 
     def test_deliverables_path_is_number_bound(self):

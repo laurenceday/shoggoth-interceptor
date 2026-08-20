@@ -2,9 +2,10 @@
 """Shoggoth Interceptor — board reader and loop state for the wildcat-finance product board.
 
 The "ZenHub product board" is backed by GitHub issues in wildcat-finance/product.
-The PAT in .env (WILDCAT_ZENHUB_READ_ONLY_PAT) is read-only: it fetches issues and
-comments, nothing else. All writes (branches, PRs) go through the operator's own
-`gh` auth, never this token.
+The PAT in .env (GITHUB_READ_PAT) is read-only: it fetches issues and comments,
+nothing else. GITHUB_ISSUE_REPLY_PAT is kept separate and is not loaded by this
+program. All writes (branches, PRs) go through the operator's own `gh` auth,
+never the read token.
 
 Pipeline data (Icebox / Product Backlog / ToDo ...) lives in ZenHub, not GitHub.
 If ZENHUB_API_KEY is present in .env, `fetch-pipelines` pulls the real mapping;
@@ -19,6 +20,7 @@ Subcommands:
   excluded              Print the exclusion list
 """
 
+import importlib.util
 import json
 import os
 import sys
@@ -31,10 +33,19 @@ STATE = ROOT / "state"
 BOARD = STATE / "board.json"
 EXCLUDED = STATE / "excluded.json"
 PIPELINES = STATE / "pipelines.json"
+LOOP_STATE = STATE / "loop.json"
+README = ROOT / "README.md"
+README_VIDEO_URL = "https://github.com/user-attachments/assets/87e15a1f-874d-4150-88bf-e6063cb20a2a"
 REPO = "wildcat-finance/product"
 API = "https://api.github.com"
 ZENHUB_API = "https://api.zenhub.com/public/graphql"
 WORKSPACE_ID = "660c35a2ab6252068500579b"  # wildcat.finance / Product Planning
+ZALGO_SCRIPT = Path(__file__).resolve().parent / "zalgo.py"
+README_INTRO = """The board is full. The loop is hungry.
+
+Shoggoth reads the Wildcat ZenHub Product Planning board, ranks the open tickets, and takes them one at a time through a Fiat delivery. Deliverables stay local. The ticket goes on the exclusion list. Then it starts again.
+
+The whole loop protocol, including the sharp edges, lives in CLAUDE.md."""
 
 
 def env_var(name: str) -> str:
@@ -44,13 +55,13 @@ def env_var(name: str) -> str:
     sys.exit(f"{name} not found in .env")
 
 
-def token() -> str:
-    return env_var("WILDCAT_ZENHUB_READ_ONLY_PAT")
+def github_read_pat() -> str:
+    return env_var("GITHUB_READ_PAT")
 
 
 def get(url: str):
     req = urllib.request.Request(url, headers={
-        "Authorization": f"Bearer {token()}",
+        "Authorization": f"Bearer {github_read_pat()}",
         "Accept": "application/vnd.github+json",
         "X-GitHub-Api-Version": "2022-11-28",
     })
@@ -172,6 +183,70 @@ def load_excluded():
     return []
 
 
+def load_loop_state():
+    if not LOOP_STATE.exists():
+        return {"completed_loops": 0}
+    try:
+        state = json.loads(LOOP_STATE.read_text(encoding="utf-8"))
+    except (OSError, json.JSONDecodeError):
+        sys.exit("invalid completion state")
+    if not isinstance(state, dict):
+        sys.exit("invalid completion state")
+    completed = state.get("completed_loops")
+    if isinstance(completed, bool) or not isinstance(completed, int) or completed < 0:
+        sys.exit("invalid completion state")
+    return state
+
+
+def atomic_write(path: Path, text: str):
+    tmp = path.with_name(f"{path.name}.tmp")
+    tmp.write_text(text, encoding="utf-8")
+    tmp.replace(path)
+
+
+def render_readme_intro(number: int):
+    if not ZALGO_SCRIPT.is_file():
+        sys.exit("text renderer unavailable")
+    spec = importlib.util.spec_from_file_location("shoggoth_zalgo", ZALGO_SCRIPT)
+    if spec is None or spec.loader is None:
+        sys.exit("text renderer unavailable")
+    module = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(module)
+
+    content = README.read_text(encoding="utf-8")
+    video = content.find(README_VIDEO_URL)
+    section = content.find("\n## ")
+    if (
+        not content.startswith("# Shoggoth Interceptor\n")
+        or video == -1
+        or section == -1
+        or video > section
+    ):
+        sys.exit("README structure not recognised")
+    intro_start = video + len(README_VIDEO_URL)
+    prefix = content[:intro_start].rstrip()
+    rendered = module.zalgo(README_INTRO, min(number, 100))
+    atomic_write(README, f"{prefix}\n\n{rendered}\n{content[section:]}")
+
+
+def complete_loop(number: int):
+    if isinstance(number, bool) or not isinstance(number, int) or number < 1:
+        sys.exit("invalid completion number")
+    state = load_loop_state()
+    completed = state["completed_loops"]
+    if number == completed:
+        return
+    if number != completed + 1:
+        sys.exit("completion out of sequence")
+
+    render_readme_intro(number)
+    STATE.mkdir(exist_ok=True)
+    atomic_write(LOOP_STATE, json.dumps({
+        "completed_loops": number,
+        "updated_at": datetime.now(timezone.utc).isoformat(),
+    }, indent=1) + "\n")
+
+
 def roster(pipeline_filter=None):
     board = load_board()
     skip = {e["number"] for e in load_excluded()}
@@ -242,9 +317,11 @@ def main():
     elif cmd == "show":
         show(int(args[1]))
     elif cmd == "exclude":
-        exclude(int(args[1]), " ".join(args[2:]) or "completed loop")
+        exclude(int(args[1]), " ".join(args[2:]) or "completed")
     elif cmd == "excluded":
         print(json.dumps(load_excluded(), indent=1))
+    elif cmd == "complete-loop":
+        complete_loop(int(args[1]))
     else:
         sys.exit(__doc__)
 
