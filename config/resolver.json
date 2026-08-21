@@ -8,6 +8,9 @@
     {
       "repo": "aave/aave-v4",
       "default_target": "laurenceday/aave-v4-shoggoth"
+    },
+    {
+      "repo": "wildcat-finance/skills"
     }
   ],
   "selection": {
