@@ -34,5 +34,12 @@
   "reason": "not in scope for shoggoth",
   "excluded_at": "2026-08-20T07:34:58.421042+00:00",
   "key": "wildcat-finance/product#696"
+ },
+ {
+  "key": "aave/aave-v4#853",
+  "repository": "aave/aave-v4",
+  "number": 853,
+  "reason": "stacked PRs #1-#3 open on laurenceday/aave-v4-shoggoth, summary in .loops/deliverables/issue-aave-aave-v4-853; neither candidate adoptable, semantic question for Aave",
+  "excluded_at": "2026-08-21T00:36:19.402508+00:00"
  }
 ]
