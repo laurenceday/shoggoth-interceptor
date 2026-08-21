@@ -2,13 +2,13 @@
 
 ![Meet our new full-stack developer.](assets/shoggoth-2-1.png)
 
-The issues are full. The loop is hungry.
+The issüės̖̓ ảr̂e̐ f͐ull̆̍. T̊̃he loop is ḧungry̽.
 
-Shoggoth reads configured GitHub repositories, ranks eligible issues, and takes
-them one at a time through a Fiat delivery. Deliverables stay local unless the
-repository policy permits a pull request. Then it starts again.
+S̮̪ho͕͂ggoth reads c̀onf͍͗igur̉ed Git̀Hub̻ re̮pỏ͑sitor̔ie͍ṡ͎, ra̠nks e͇̯l̆igible͔ is̎su̠es, and tak̘es͒̏
+them̬ one at a̦ t̻imȇ throu͖gh a Fi͑at d̂͛e̱live̒ry. D̼el͈͌iverables s̓tay loca̠l̊̃ un̺les̓͛s̿ the
+re̢pos̆itory po̽licy̨ permit̥̂s̺ a pu̲̾ll r̢equ͖est. T̍he͒n it̩ st̖art̩s̈́ a̯ğai̓n.
 
-The whole loop protocol, including the sharp edges, lives in `CLAUDE.md`.
+The͙ wh̀o̯̲le loòp p̫̯rot̿ocol, incl̀uding th͆e sharp e̼dğes, l̫ives in `CLAUDE.md`.
 
 <div align="center">
   <video src="https://github.com/user-attachments/assets/87e15a1f-874d-4150-88bf-e6063cb20a2a"></video>
