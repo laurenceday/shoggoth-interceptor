@@ -101,12 +101,35 @@ class Api:
             raise ValueError("invalid issue key")
         return out
 
+    def _pipeline_keys(self, issue):
+        """Both spellings a pipeline map may hold for one issue."""
+        short = issue["repository"].split("/", 1)[1]
+        return (issue["key"], f"{short}#{issue['number']}")
+
     def _pipeline_of(self, issue, pipelines):
         if not pipelines:
             return None
-        short = issue["repository"].split("/", 1)[1]
-        return (pipelines.get("issues", {}).get(issue["key"])
-                or pipelines.get("issues", {}).get(f"{short}#{issue['number']}"))
+        mapping = pipelines.get("issues", {})
+        for key in self._pipeline_keys(issue):
+            if key in mapping:
+                return mapping[key]
+        return None
+
+    def _position_of(self, issue, pipelines):
+        """Board rank within the pipeline, or None when the board has no say.
+
+        Absent is not zero. An issue outside the ZenHub workspace, or in a
+        repository that is not a configured source, has no rank at all, and
+        writing it as 0 would sort it above the thing the board actually
+        ranked first.
+        """
+        if not pipelines:
+            return None
+        positions = pipelines.get("positions", {})
+        for key in self._pipeline_keys(issue):
+            if key in positions:
+                return positions[key]
+        return None
 
     def roster(self):
         board = self._load("board.json")
@@ -131,11 +154,16 @@ class Api:
             if "#" in key:
                 repo = key.rsplit("#", 1)[0]
                 excluded_by_repository[repo] = excluded_by_repository.get(repo, 0) + 1
+        in_flight = board.get("in_flight") or {}
         rows = []
         for raw_issue in board["issues"]:
             issue = self._normalise_issue(raw_issue, board)
             labels = {label.lower() for label in issue.get("labels", [])}
             if issue["key"] in skip:
+                continue
+            # Same rule the ranker applies: an issue an open pull request
+            # already points at is somebody's work in progress.
+            if in_flight.get(issue["key"].lower()):
                 continue
             if selection["unassigned_only"] and issue.get("assignees"):
                 continue
@@ -145,6 +173,7 @@ class Api:
                 continue
             pipe = self._pipeline_of(issue, pipelines)
             rows.append({
+                "position": self._position_of(issue, pipelines),
                 "key": issue["key"],
                 "repository": issue["repository"],
                 "number": issue["number"],
@@ -155,7 +184,16 @@ class Api:
                 "updated_at": issue["updated_at"],
                 "html_url": issue["html_url"],
             })
-        rows.sort(key=lambda r: (r["repository"], r["title"].lower(), r["number"]))
+        # Board order first, then issue number. Sorting by title read as random
+        # to anyone who had put the issues in a deliberate order: five tickets
+        # ranked one to five came back 5, 2, 3, 1, 4. Unranked issues sort after
+        # ranked ones rather than at position zero.
+        rows.sort(key=lambda r: (
+            r["repository"],
+            0 if r["position"] is not None else 1,
+            r["position"] if r["position"] is not None else 0,
+            r["number"],
+        ))
         return {
             "fetched_at": board["fetched_at"],
             "pipelines_fetched_at": pipelines["fetched_at"] if pipelines else None,
@@ -164,10 +202,15 @@ class Api:
             # configured source: a source whose issues are all excluded or
             # assigned would otherwise offer a filter that selects nothing.
             "repositories": sorted({row["repository"] for row in rows}),
+            # Every category present, so the filter can offer one for issues
+            # the board says nothing about rather than hiding them.
+            "pipelines": sorted({row["pipeline"] for row in rows if row["pipeline"]}),
             # Per repository as well as in total, because a filtered console
             # showing a count drawn from repositories it is hiding reports an
             # exclusion the reader cannot see or act on.
             "excluded_by_repository": excluded_by_repository,
+            "in_flight_count": sum(1 for raw in board["issues"]
+                                   if in_flight.get(self._normalise_issue(raw, board)["key"].lower())),
             "candidates": rows,
         }
 

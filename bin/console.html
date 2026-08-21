@@ -14,7 +14,7 @@
          background-position:center 30%; background-size:cover; background-attachment:fixed;
          color:var(--fg);
          font:14px/1.45 ui-monospace, SFMono-Regular, Menlo, monospace; }
-  header { display:flex; gap:12px; align-items:center; padding:10px 16px;
+  header { display:flex; flex-wrap:wrap; gap:12px; align-items:center; padding:10px 16px;
            border-bottom:1px solid var(--line); position:sticky; top:0; z-index:10;
            background:rgba(13,17,23,.92); backdrop-filter:blur(10px); }
   header h1 { font-size:15px; margin:0; color:var(--accent); }
@@ -57,8 +57,11 @@
             overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
   .ok { color:var(--good); } .err { color:var(--bad); }
   a { color:#58a6ff; }
-  #repoFilter { background:var(--panel); color:inherit; border:1px solid var(--line);
-                border-radius:6px; padding:4px 6px; font:inherit; }
+  #repoFilter, #pipeFilter { background:var(--panel); color:inherit;
+                border:1px solid var(--line); border-radius:6px;
+                padding:4px 6px; font:inherit; }
+  td.pipe, td.pos { white-space:nowrap; }
+  td.unranked { opacity:.45; }
   #eye { flex:none; }
   #eye #eyeOpen { fill:#1b1400; stroke:#6b5a1e; stroke-width:2; }
   #eye #eyePupil { fill:#3a3010; }
@@ -97,19 +100,22 @@
   </svg>
   <h1>SHOGGOTH INTERCEPTOR</h1>
   <span class="age" id="age"></span>
+  <select id="repoFilter" title="Show candidates from one source repository">
+    <option value="">all repositories</option>
+  </select>
+  <select id="pipeFilter" title="Show candidates in one ZenHub category">
+    <option value="">all categories</option>
+  </select>
   <button id="btnRefresh">Refresh issues</button>
   <button id="btnArchive">Cut archive</button>
   <button id="btnSmoke">Smoke launch</button>
   <button id="btnLoop">Start loop</button>
-  <select id="repoFilter" title="Show candidates from one source repository">
-    <option value="">all repositories</option>
-  </select>
   <span id="status"></span>
 </header>
 <main>
   <div id="left">
     <table>
-      <thead><tr><th>repository</th><th id="thNum" class="sortable">#</th><th>title</th><th>c</th></tr></thead>
+      <thead><tr><th>repository</th><th id="thNum" class="sortable">#</th><th id="thPipe">category</th><th id="thPos" class="sortable">pos</th><th>title</th><th>c</th></tr></thead>
       <tbody id="roster"></tbody>
     </table>
   </div>

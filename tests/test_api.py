@@ -158,6 +158,82 @@ class ApiTest(unittest.TestCase):
             self.assertEqual(repo, repo.lower())
             self.assertIn("/", repo)
 
+    def test_default_order_follows_the_board_then_the_number(self):
+        """Sorting by title read as random to anyone who had ordered the issues.
+
+        Five playground tickets filed one to five came back 5, 2, 3, 1, 4,
+        because their titles happened to sort that way.
+        """
+        rows = self.api.roster()["candidates"]
+        by_repo = {}
+        for row in rows:
+            by_repo.setdefault(row["repository"], []).append(row)
+        for repo, group in by_repo.items():
+            ranked = [r for r in group if r["position"] is not None]
+            unranked = [r for r in group if r["position"] is None]
+            with self.subTest(repository=repo):
+                # Ranked ones come first, in board order.
+                self.assertEqual(group[:len(ranked)], ranked)
+                self.assertEqual([r["position"] for r in ranked],
+                                 sorted(r["position"] for r in ranked))
+                # Then the rest, by number.
+                self.assertEqual([r["number"] for r in unranked],
+                                 sorted(r["number"] for r in unranked))
+
+    def test_roster_carries_the_board_category_and_position(self):
+        """The console shows both as columns and filters on the category."""
+        roster = self.api.roster()
+        rows = {row["key"]: row for row in roster["candidates"]}
+        self.assertTrue(rows)
+        for row in rows.values():
+            self.assertIn("pipeline", row)
+            self.assertIn("position", row)
+        self.assertEqual(roster["pipelines"],
+                         sorted({row["pipeline"] for row in rows.values() if row["pipeline"]}))
+
+    def test_an_unranked_issue_has_no_position_rather_than_zero(self):
+        """Absent is not zero.
+
+        An issue outside the ZenHub workspace, or in a repository that is not a
+        configured source, has no rank at all. Writing it as 0 would sort it
+        above the issue the board actually ranked first.
+        """
+        path = Path(self.tmp.name) / ".loops" / "board.json"
+        board = json.loads(path.read_text())
+        issues = board["issues"] if isinstance(board, dict) else board
+        # The fixture is the older single-repository shape, so `repository` and
+        # `key` are added by normalisation rather than carried on the issue.
+        unknown = dict(issues[0])
+        unknown["number"] = 999999
+        unknown["assignees"] = []
+        unknown["labels"] = []
+        issues.append(unknown)
+        path.write_text(json.dumps(board))
+        row = next(r for r in self.api.roster()["candidates"] if r["number"] == 999999)
+        self.assertIsNone(row["position"])
+        self.assertIsNone(row["pipeline"])
+
+    def test_an_issue_with_an_open_pull_request_trail_is_not_a_candidate(self):
+        """CLAUDE.md rule (c), the half that was only ever prose.
+
+        Assignment was mechanised and "its branch or pull request trail shows
+        that someone is already working on it" was not, so a Fiat run in
+        flight kept being offered its own issue: the branch is slugged from the
+        title and carries no number, and the operator had not assigned it.
+        """
+        path = Path(self.tmp.name) / ".loops" / "board.json"
+        board = json.loads(path.read_text())
+        issues = board["issues"] if isinstance(board, dict) else board
+        target = issues[0]
+        key = f"{board.get('repo')}#{target['number']}".lower()
+        before = [r["number"] for r in self.api.roster()["candidates"]]
+        self.assertIn(target["number"], before)
+        board["in_flight"] = {key: [4321]}
+        path.write_text(json.dumps(board))
+        roster = self.api.roster()
+        self.assertNotIn(target["number"], [r["number"] for r in roster["candidates"]])
+        self.assertEqual(roster["in_flight_count"], 1)
+
     def test_roster_masks_excluded(self):
         numbers = [row["number"] for row in self.api.roster()["candidates"]]
         self.assertNotIn(606, numbers)   # excluded in fixture

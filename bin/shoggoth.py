@@ -299,6 +299,7 @@ def _fetch_comments(repo, number, expected, token=None):
 def fetch():
     config = load_config()
     entries = []
+    in_flight = {}
     for source in config["sources"]:
         repo = source["repo"]
         token = env_var(source["token_env"]) if source.get("token_env") else None
@@ -309,6 +310,14 @@ def fetch():
                 raise ValueError("invalid GitHub issues response")
             for item in batch:
                 if "pull_request" in item:
+                    # The issues endpoint returns pull requests too, and the
+                    # walk used to drop them. They are the trail CLAUDE.md rule
+                    # (c) asks about, and reading them here costs nothing: the
+                    # bytes have already been fetched. A token scoped to Issues
+                    # cannot reach /pulls at all, so this is also the only way
+                    # to see them.
+                    for number in _referenced_numbers(item):
+                        in_flight.setdefault(f"{repo}#{number}".lower(), []).append(item["number"])
                     continue
                 expected = item.get("comments", 0)
                 if isinstance(expected, bool) or not isinstance(expected, int) or not 0 <= expected <= MAX_COMMENTS:
@@ -330,9 +339,30 @@ def fetch():
         "complete": True,
         "fetched_at": datetime.now(timezone.utc).isoformat(),
         "repositories": [source["repo"] for source in config["sources"]],
+        # Issues an open pull request already points at, so ranking can skip
+        # work someone else has in flight.
+        "in_flight": {key: sorted(set(pulls)) for key, pulls in sorted(in_flight.items())},
         "issues": entries,
     }, indent=1) + "\n")
     print(f"wrote {BOARD} ({len(entries)} open issues across {len(config['sources'])} repositories)")
+
+
+# CLAUDE.md rule (c) says to skip a ticket when its branch or pull request trail
+# shows someone is already working on it. Only the assignee half was ever
+# mechanised, so a Fiat run mid-flight went on offering its own issue: the
+# branches are slugged from the title and carry no number, and GitHub's
+# `closingIssuesReferences` stays empty for a step PR that references without
+# closing. What is reliable is the reference itself.
+ISSUE_REFERENCE_RE = re.compile(r"#(\d{1,9})\b")
+
+
+def _referenced_numbers(pull) -> set:
+    """Issue numbers an open pull request points at, from every trail it leaves."""
+    numbers = set()
+    for text in (pull.get("body") or "", pull.get("title") or ""):
+        numbers.update(int(match) for match in ISSUE_REFERENCE_RE.findall(text))
+    return numbers
+
 
 
 def zenhub(query: str, variables: dict):
@@ -542,11 +572,17 @@ def pipeline_of(issue, pipelines):
     return None
 
 
-def is_eligible(issue, config):
+def is_eligible(issue, config, in_flight=None):
     selection = config["selection"]
     labels = {label.lower() for label in issue.get("labels", [])}
     if selection["unassigned_only"] and issue.get("assignees"):
         return False, "assigned"
+    # CLAUDE.md rule (c): skip a ticket whose pull request trail shows somebody
+    # is already on it. Assignment was the only half ever mechanised, so a run
+    # in flight kept being offered its own issue.
+    pulls = (in_flight or {}).get(issue["key"].lower())
+    if pulls:
+        return False, "in flight: PR " + ", ".join(f"#{n}" for n in pulls)
     if selection["include_labels"] and not labels.intersection(selection["include_labels"]):
         return False, "missing required label"
     if labels.intersection(selection["exclude_labels"]):
@@ -560,11 +596,12 @@ def candidate_rows(board=None, config=None, pipeline_filter=None):
     skip = excluded_keys(board)
     pipelines = load_pipelines()
     wanted = {value.lower() for value in pipeline_filter} if pipeline_filter else None
+    in_flight = board.get("in_flight") or {}
     rows = []
     for issue in board["issues"]:
         if issue["key"] in skip:
             continue
-        eligible, reason = is_eligible(issue, config)
+        eligible, reason = is_eligible(issue, config, in_flight)
         if not eligible:
             continue
         pipeline = pipeline_of(issue, pipelines)

@@ -36,5 +36,7 @@
       ]
     }
   ],
-  "zenhub": null
+  "zenhub": {
+    "workspace_id": "660c35a2ab6252068500579b"
+  }
 }

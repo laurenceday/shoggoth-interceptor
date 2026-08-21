@@ -50,21 +50,34 @@ let selectedRow = null;
 // null keeps the server's order: repository, then title, then number. Clicking
 // the column cycles ascending, descending, then back to that default.
 let numberSort = null;
+// Which column is sorting, so the two cannot both claim to be.
+let sortColumn = null;
 
-function syncRepoFilter(repositories) {
-  const select = $("repoFilter");
+// The special value for "the board says nothing about this one". Kept distinct
+// from the empty string, which means no filter at all.
+const UNRANKED = "\u0000unranked";
+
+function syncFilter(id, allLabel, values, extra) {
+  const select = $(id);
   // The choice outlives a reload: rebuilding the options would otherwise reset
   // the filter every time the roster refreshes.
   const chosen = select.value;
+  const offered = [...(values || []), ...(extra ? [extra.value] : [])];
   select.textContent = "";
-  select.appendChild(el("option", null, "all repositories"));
-  select.lastChild.value = "";
-  for (const repo of repositories || []) {
-    const option = el("option", null, repo);
-    option.value = repo;
+  const first = el("option", null, allLabel);
+  first.value = "";
+  select.appendChild(first);
+  for (const value of values || []) {
+    const option = el("option", null, value);
+    option.value = value;
     select.appendChild(option);
   }
-  select.value = (repositories || []).includes(chosen) ? chosen : "";
+  if (extra) {
+    const option = el("option", null, extra.label);
+    option.value = extra.value;
+    select.appendChild(option);
+  }
+  select.value = offered.includes(chosen) ? chosen : "";
   return select.value;
 }
 
@@ -72,21 +85,44 @@ async function loadRoster() {
   const roster = await getJSON("/api/roster");
   const body = $("roster");
   body.textContent = "";
-  const chosen = syncRepoFilter(roster.repositories);
-  let rows = chosen
-    ? roster.candidates.filter((row) => row.repository === chosen)
-    : roster.candidates.slice();
+  const chosen = syncFilter("repoFilter", "all repositories", roster.repositories);
+  const category = syncFilter("pipeFilter", "all categories", roster.pipelines,
+                              {value: UNRANKED, label: "no category"});
+  let rows = roster.candidates.filter((row) =>
+    (!chosen || row.repository === chosen) &&
+    (!category || (category === UNRANKED ? !row.pipeline : row.pipeline === category)));
   if (numberSort) {
     // Sorts across every visible repository rather than within each one, so a
     // filtered view and an unfiltered one order the same way.
-    rows.sort((a, b) => numberSort === "asc" ? a.number - b.number : b.number - a.number);
+    const dir = numberSort === "asc" ? 1 : -1;
+    if (sortColumn === "position") {
+      // Unranked issues sink to the bottom in both directions. They are not
+      // ranked last; they are not ranked, and floating them to the top of a
+      // descending sort would read as though they were the board's priority.
+      rows.sort((a, b) => {
+        const x = a.position, y = b.position;
+        if (x === null || x === undefined) return (y === null || y === undefined) ? 0 : 1;
+        if (y === null || y === undefined) return -1;
+        return (x - y) * dir;
+      });
+    } else {
+      rows.sort((a, b) => (a.number - b.number) * dir);
+    }
   }
-  $("thNum").textContent = "#" + (numberSort === "asc" ? " \u2191" : numberSort === "desc" ? " \u2193" : "");
+  const arrow = numberSort === "asc" ? " \u2191" : numberSort === "desc" ? " \u2193" : "";
+  $("thNum").textContent = "#" + (sortColumn === "number" ? arrow : "");
+  $("thPos").textContent = "pos" + (sortColumn === "position" ? arrow : "");
   const shown = rows.length;
   for (const row of rows) {
     const tr = el("tr", "row");
     tr.appendChild(el("td", "pipe", row.repository));
     tr.appendChild(el("td", "num", "#" + row.number));
+    tr.appendChild(el("td", row.pipeline ? "pipe" : "pipe unranked", row.pipeline || "N/A"));
+    // Absent is not zero: an issue the board never ranked is shown as N/A
+    // rather than sorted above the one the board actually ranked first.
+    const ranked = row.position !== null && row.position !== undefined;
+    tr.appendChild(el("td", ranked ? "num pos" : "num pos unranked",
+                      ranked ? String(row.position) : "N/A"));
     const title = el("td", null, row.title + " ");
     for (const label of row.labels) title.appendChild(el("span", "label", label));
     tr.appendChild(title);
@@ -284,10 +320,18 @@ function showRunState(latest) {
 }
 
 $("repoFilter").addEventListener("change", loadRoster);
-$("thNum").addEventListener("click", () => {
-  numberSort = numberSort === null ? "asc" : numberSort === "asc" ? "desc" : null;
+function cycleSort(column) {
+  // Clicking a different column starts it ascending rather than inheriting the
+  // other one's direction.
+  if (sortColumn !== column) { sortColumn = column; numberSort = "asc"; }
+  else if (numberSort === "asc") numberSort = "desc";
+  else if (numberSort === "desc") { numberSort = null; sortColumn = null; }
+  else numberSort = "asc";
   loadRoster();
-});
+}
+$("thNum").addEventListener("click", () => cycleSort("number"));
+$("thPos").addEventListener("click", () => cycleSort("position"));
+$("pipeFilter").addEventListener("change", loadRoster);
 $("btnSmoke").addEventListener("click", () => startLoop("smoke"));
 $("btnLoop").addEventListener("click", () => startLoop("loop"));
 
