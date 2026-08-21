@@ -1,0 +1,30 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(python3 bin/shoggoth.py:*)",
+      "Bash(python3 bin/repository-gate.py:*)",
+      "Bash(python3 bin/console.py:*)",
+      "Bash(python3 -m unittest:*)",
+      "Bash(bin/install-guardrails.sh:*)",
+      "Bash(bin/shoggoth-pr.sh:*)",
+      "Bash(bin/archive.sh:*)",
+      "Bash(bin/migration-check.sh:*)",
+      "Bash(git:*)",
+      "Bash(gh auth status:*)",
+      "Bash(gh api:*)",
+      "Bash(gh issue:*)",
+      "Bash(gh repo view:*)",
+      "Bash(gh pr view:*)",
+      "Bash(gh pr list:*)",
+      "Bash(gh pr checks:*)",
+      "Bash(gh pr diff:*)"
+    ],
+    "deny": [
+      "Bash(python3 bin/repository-gate.py init:*)",
+      "Bash(gh pr create:*)",
+      "Bash(gh pr merge:*)",
+      "Bash(gh repo delete:*)",
+      "Bash(gh repo edit:*)"
+    ]
+  }
+}
