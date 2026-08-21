@@ -11,6 +11,10 @@
     },
     {
       "repo": "wildcat-finance/skills"
+    },
+    {
+      "repo": "laurenceday/shoggoth-playground",
+      "token_env": "GITHUB_READ_PAT_PLAYGROUND"
     }
   ],
   "selection": {

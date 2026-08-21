@@ -35,6 +35,7 @@ README = ROOT / "README.md"
 README_VIDEO_URL = "https://github.com/user-attachments/assets/87e15a1f-874d-4150-88bf-e6063cb20a2a"
 REPO = "wildcat-finance/product"  # legacy state compatibility only
 API = "https://api.github.com"
+TOKEN_ENV_RE = re.compile(r"[A-Z][A-Z0-9_]{0,63}")
 ZENHUB_API = "https://api.zenhub.com/public/graphql"
 WORKSPACE_ID = "660c35a2ab6252068500579b"
 ZALGO_SCRIPT = Path(__file__).resolve().parent / "zalgo.py"
@@ -107,7 +108,11 @@ def validate_config(raw):
             raise ValueError("duplicate source repository")
         seen.add(repo)
         target = source.get("default_target")
+        token_env = source.get("token_env")
+        if token_env is not None and not TOKEN_ENV_RE.fullmatch(str(token_env)):
+            raise ValueError("invalid source token_env")
         clean_sources.append({
+            "token_env": token_env,
             "repo": repo,
             "default_target": validate_repo(target, "default target") if target else repo,
         })
@@ -199,11 +204,17 @@ def _read_json_response(response):
         raise ValueError("GitHub returned invalid JSON") from None
 
 
-def get(url: str):
+def get(url: str, token: str | None = None):
+    """One GitHub read. `token` overrides the default read PAT.
+
+    A fine-grained PAT is scoped to a single resource owner, so a private
+    repository under a different owner needs its own token rather than a wider
+    grant on the existing one. The source names which variable holds it.
+    """
     if not isinstance(url, str) or not url.startswith(f"{API}/"):
         raise ValueError("GitHub URL is not allowed")
     req = urllib.request.Request(url, headers={
-        "Authorization": f"Bearer {github_read_pat()}",
+        "Authorization": f"Bearer {token or github_read_pat()}",
         "Accept": "application/vnd.github+json",
         "X-GitHub-Api-Version": "2022-11-28",
     })
@@ -259,11 +270,12 @@ def _issue_entry(repo, item, comments):
     }
 
 
-def _fetch_comments(repo, number, expected):
+def _fetch_comments(repo, number, expected, token=None):
     comments = []
     page = 1
     while len(comments) < expected and page <= MAX_PAGES:
-        batch = get(f"{API}/repos/{repo}/issues/{number}/comments?per_page=100&page={page}")
+        batch = get(f"{API}/repos/{repo}/issues/{number}/comments?per_page=100&page={page}",
+                    token)
         if not isinstance(batch, list):
             raise ValueError("invalid GitHub comments response")
         for comment in batch:
@@ -289,9 +301,10 @@ def fetch():
     entries = []
     for source in config["sources"]:
         repo = source["repo"]
+        token = env_var(source["token_env"]) if source.get("token_env") else None
         page = 1
         while page <= MAX_PAGES:
-            batch = get(f"{API}/repos/{repo}/issues?state=open&per_page=100&page={page}")
+            batch = get(f"{API}/repos/{repo}/issues?state=open&per_page=100&page={page}", token)
             if not isinstance(batch, list):
                 raise ValueError("invalid GitHub issues response")
             for item in batch:
@@ -300,7 +313,7 @@ def fetch():
                 expected = item.get("comments", 0)
                 if isinstance(expected, bool) or not isinstance(expected, int) or not 0 <= expected <= MAX_COMMENTS:
                     raise ValueError("invalid GitHub comment count")
-                comments = _fetch_comments(repo, item["number"], expected) if expected else []
+                comments = _fetch_comments(repo, item["number"], expected, token) if expected else []
                 entries.append(_issue_entry(repo, item, comments))
                 print(f"\rfetched {len(entries)}", end="", file=sys.stderr)
             if len(batch) < 100:
@@ -344,20 +357,37 @@ def fetch_pipelines():
         query ($wid: ID!) {
           workspace(id: $wid) { pipelinesConnection(first: 20) { nodes { id name } } }
         }""", {"wid": workspace_id})["workspace"]["pipelinesConnection"]["nodes"]
+    # Only a configured source gets a recorded rank. A repository that merely
+    # shares the ZenHub workspace is mapped to its pipeline like any other and
+    # carries no position, because nothing here acts on it.
+    ranked_repos = {source["repo"].lower() for source in config["sources"]}
     mapping = {}
+    positions = {}
+    unranked = set()
     for pipeline in pipes:
         cursor = None
+        # Board rank is the order searchIssuesByPipeline yields, so the index is
+        # taken as the pages are walked. Nothing reconstructs it afterwards.
+        rank = 0
         while True:
             page = zenhub("""
                 query ($pid: ID!, $after: String) {
                   searchIssuesByPipeline(pipelineId: $pid, filters: {}, first: 100, after: $after) {
-                    nodes { number repository { name } }
+                    nodes { number repository { name ownerName } }
                     pageInfo { hasNextPage endCursor }
                   }
                 }""", {"pid": pipeline["id"], "after": cursor})["searchIssuesByPipeline"]
             for node in page["nodes"]:
                 repo = node["repository"]["name"]
-                mapping[f"{repo}#{node['number']}".lower()] = pipeline["name"]
+                owner = node["repository"].get("ownerName") or ""
+                key = f"{repo}#{node['number']}".lower()
+                mapping[key] = pipeline["name"]
+                qualified = f"{owner}/{repo}".lower()
+                if qualified in ranked_repos:
+                    positions[key] = rank
+                    rank += 1
+                else:
+                    unranked.add(qualified)
             if not page["pageInfo"]["hasNextPage"]:
                 break
             cursor = page["pageInfo"]["endCursor"]
@@ -367,8 +397,12 @@ def fetch_pipelines():
         "workspace_id": workspace_id,
         "pipelines": [pipeline["name"] for pipeline in pipes],
         "issues": mapping,
+        "positions": positions,
     }, indent=1) + "\n")
-    print(f"wrote {PIPELINES} ({len(mapping)} issues mapped)")
+    print(f"wrote {PIPELINES} ({len(mapping)} issues mapped, "
+          f"{len(positions)} ranked)")
+    if unranked:
+        print(f"unranked, not a configured source: {', '.join(sorted(unranked))}")
 
 
 def load_pipelines():
