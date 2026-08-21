@@ -53,6 +53,10 @@
             overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
   .ok { color:var(--good); } .err { color:var(--bad); }
   a { color:#58a6ff; }
+  #repoFilter { background:var(--panel); color:inherit; border:1px solid var(--line);
+                border-radius:6px; padding:4px 6px; font:inherit; }
+  th.sortable { cursor:pointer; user-select:none; }
+  th.sortable:hover { color:#58a6ff; }
 </style>
 </head>
 <body>
@@ -63,12 +67,15 @@
   <button id="btnArchive">Cut archive</button>
   <button id="btnSmoke">Smoke launch</button>
   <button id="btnLoop">Start loop</button>
+  <select id="repoFilter" title="Show candidates from one source repository">
+    <option value="">all repositories</option>
+  </select>
   <span id="status"></span>
 </header>
 <main>
   <div id="left">
     <table>
-      <thead><tr><th>repository</th><th>#</th><th>title</th><th>c</th></tr></thead>
+      <thead><tr><th>repository</th><th id="thNum" class="sortable">#</th><th>title</th><th>c</th></tr></thead>
       <tbody id="roster"></tbody>
     </table>
   </div>

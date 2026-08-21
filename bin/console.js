@@ -47,12 +47,43 @@ async function loadHealth() {
 }
 
 let selectedRow = null;
+// null keeps the server's order: repository, then title, then number. Clicking
+// the column cycles ascending, descending, then back to that default.
+let numberSort = null;
+
+function syncRepoFilter(repositories) {
+  const select = $("repoFilter");
+  // The choice outlives a reload: rebuilding the options would otherwise reset
+  // the filter every time the roster refreshes.
+  const chosen = select.value;
+  select.textContent = "";
+  select.appendChild(el("option", null, "all repositories"));
+  select.lastChild.value = "";
+  for (const repo of repositories || []) {
+    const option = el("option", null, repo);
+    option.value = repo;
+    select.appendChild(option);
+  }
+  select.value = (repositories || []).includes(chosen) ? chosen : "";
+  return select.value;
+}
 
 async function loadRoster() {
   const roster = await getJSON("/api/roster");
   const body = $("roster");
   body.textContent = "";
-  for (const row of roster.candidates) {
+  const chosen = syncRepoFilter(roster.repositories);
+  let rows = chosen
+    ? roster.candidates.filter((row) => row.repository === chosen)
+    : roster.candidates.slice();
+  if (numberSort) {
+    // Sorts across every visible repository rather than within each one, so a
+    // filtered view and an unfiltered one order the same way.
+    rows.sort((a, b) => numberSort === "asc" ? a.number - b.number : b.number - a.number);
+  }
+  $("thNum").textContent = "#" + (numberSort === "asc" ? " \u2191" : numberSort === "desc" ? " \u2193" : "");
+  const shown = rows.length;
+  for (const row of rows) {
     const tr = el("tr", "row");
     tr.appendChild(el("td", "pipe", row.repository));
     tr.appendChild(el("td", "num", "#" + row.number));
@@ -68,8 +99,15 @@ async function loadRoster() {
     });
     body.appendChild(tr);
   }
-  setStatus(roster.candidates.length + " candidates in scope, " +
-            roster.excluded_count + " excluded", true);
+  // With a filter on, the exclusion count is the one for that repository:
+  // a count drawn from repositories the console is hiding reports something
+  // the reader can neither see nor act on.
+  const excluded = chosen
+    ? (roster.excluded_by_repository || {})[chosen.toLowerCase()] || 0
+    : roster.excluded_count;
+  setStatus(shown + " of " + roster.candidates.length + " candidates shown, " +
+            excluded + " excluded", true);
+  loadExcluded();
 }
 
 async function loadIssue(key) {
@@ -125,7 +163,7 @@ async function loadRankings() {
   const docs = await getJSON("/api/rankings");
   const box = $("rankings");
   box.textContent = "";
-  box.appendChild(el("h2", null, "Rankings and loop notes"));
+  box.appendChild(el("h2", null, "Rankings"));
   for (const doc of docs) {
     const details = el("details");
     details.appendChild(el("summary", null, doc.name));
@@ -135,7 +173,12 @@ async function loadRankings() {
 }
 
 async function loadExcluded() {
-  const entries = await getJSON("/api/excluded");
+  const all = await getJSON("/api/excluded");
+  const chosen = $("repoFilter").value;
+  const entries = chosen
+    ? all.filter((entry) => typeof entry.key === "string" &&
+                            entry.key.toLowerCase().startsWith(chosen.toLowerCase() + "#"))
+    : all;
   const box = $("excludedList");
   box.textContent = "";
   box.appendChild(el("h2", null, "Excluded (" + entries.length + ")"));
@@ -177,6 +220,11 @@ async function loadLaunches() {
   }
 }
 
+$("repoFilter").addEventListener("change", loadRoster);
+$("thNum").addEventListener("click", () => {
+  numberSort = numberSort === null ? "asc" : numberSort === "asc" ? "desc" : null;
+  loadRoster();
+});
 $("btnSmoke").addEventListener("click", () => startLoop("smoke"));
 $("btnLoop").addEventListener("click", () => startLoop("loop"));
 

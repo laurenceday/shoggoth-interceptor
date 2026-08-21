@@ -36,6 +36,44 @@ class ApiTest(unittest.TestCase):
         pipes = {row["pipeline"] for row in roster["candidates"]}
         self.assertEqual(pipes, {"Icebox", "Product Backlog", "New Issues"})
 
+    def test_roster_reports_the_repositories_present_among_candidates(self):
+        """The console's repository filter is built from this list.
+
+        It reports what the candidates actually contain rather than every
+        configured source, because a source whose issues are all excluded or
+        assigned would otherwise offer a filter option that selects nothing.
+        """
+        roster = self.api.roster()
+        repositories = roster["repositories"]
+        self.assertEqual(repositories, sorted(set(repositories)))
+        self.assertEqual(
+            set(repositories),
+            {row["repository"] for row in roster["candidates"]},
+        )
+
+    def test_rankings_shows_ranking_documents_and_not_loop_notes(self):
+        """`deliverables/` also holds briefs and notes.
+
+        Those stay on disk as the archive of what a loop decided; the panel
+        answers what was ranked, and a brief listed beside a ranking reads as
+        though it were one.
+        """
+        (Path(self.api.deliverables) / "loop-2-ranking.md").write_text("# second")
+        (Path(self.api.deliverables) / "gate-widening-brief.md").write_text("# a note")
+        names = [doc["name"] for doc in self.api.rankings()]
+        self.assertIn("loop-1-ranking.md", names)
+        self.assertIn("loop-2-ranking.md", names)
+        self.assertNotIn("gate-widening-brief.md", names)
+
+    def test_roster_attributes_exclusions_to_their_repository(self):
+        """A filtered console needs the count for the repository on screen."""
+        roster = self.api.roster()
+        by_repo = roster["excluded_by_repository"]
+        self.assertEqual(sum(by_repo.values()), roster["excluded_count"])
+        for repo in by_repo:
+            self.assertEqual(repo, repo.lower())
+            self.assertIn("/", repo)
+
     def test_roster_masks_excluded(self):
         numbers = [row["number"] for row in self.api.roster()["candidates"]]
         self.assertNotIn(606, numbers)   # excluded in fixture

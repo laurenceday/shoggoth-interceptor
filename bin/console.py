@@ -115,12 +115,22 @@ class Api:
         pipelines = self._load("pipelines.json")
         repositories = board.get("repositories") or [board.get("repo")]
         selection = self._selection()
+        # One pass resolves both: a second loop over the same entries drifted
+        # from this one immediately, missing the keyless single-repository form
+        # that the fallback below exists to handle.
         skip = set()
+        excluded_by_repository = {}
         for entry in self.excluded():
             if isinstance(entry.get("key"), str):
-                skip.add(entry["key"].lower())
+                key = entry["key"].lower()
             elif len(repositories) == 1 and isinstance(entry.get("number"), int):
-                skip.add(f"{repositories[0]}#{entry['number']}".lower())
+                key = f"{repositories[0]}#{entry['number']}".lower()
+            else:
+                continue
+            skip.add(key)
+            if "#" in key:
+                repo = key.rsplit("#", 1)[0]
+                excluded_by_repository[repo] = excluded_by_repository.get(repo, 0) + 1
         rows = []
         for raw_issue in board["issues"]:
             issue = self._normalise_issue(raw_issue, board)
@@ -150,6 +160,14 @@ class Api:
             "fetched_at": board["fetched_at"],
             "pipelines_fetched_at": pipelines["fetched_at"] if pipelines else None,
             "excluded_count": len(skip),
+            # The repositories actually present among the candidates, not every
+            # configured source: a source whose issues are all excluded or
+            # assigned would otherwise offer a filter that selects nothing.
+            "repositories": sorted({row["repository"] for row in rows}),
+            # Per repository as well as in total, because a filtered console
+            # showing a count drawn from repositories it is hiding reports an
+            # exclusion the reader cannot see or act on.
+            "excluded_by_repository": excluded_by_repository,
             "candidates": rows,
         }
 
@@ -182,10 +200,19 @@ class Api:
         return sorted(p.name for p in folder.iterdir() if p.is_file())
 
     def rankings(self):
+        """Ranking documents only.
+
+        `deliverables/` also holds loop notes and briefs. Those stay on disk as
+        the archive of what a loop decided, and the console does not show them:
+        the panel exists to answer what was ranked, and a brief alongside a
+        ranking reads as though it were one.
+        """
         if not self.deliverables.is_dir():
             return []
         docs = []
         for path in sorted(self.deliverables.glob("*.md")):
+            if "ranking" not in path.stem.lower():
+                continue
             docs.append({"name": path.name, "text": path.read_text()})
         return docs
 
