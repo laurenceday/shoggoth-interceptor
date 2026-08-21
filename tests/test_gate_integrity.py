@@ -1,6 +1,7 @@
 import importlib.util
 import shutil
 import stat
+import subprocess
 import tempfile
 import unittest
 from pathlib import Path
@@ -89,3 +90,64 @@ class GateIntegrityTest(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+class GeneratedHookTest(unittest.TestCase):
+    """The installed hook must abort when the integrity check fails.
+
+    Nothing covered this before: the hook ran verify-gate.py on its own line
+    with no `set -e` and no check of its status, so a digest mismatch printed a
+    warning and the push proceeded into the very gate the pin had just failed.
+    """
+
+    def setUp(self):
+        self.tmp = tempfile.TemporaryDirectory()
+        self.root = Path(self.tmp.name)
+        fake_bin = self.root / "fake-root" / "bin"
+        fake_bin.mkdir(parents=True)
+        shutil.copy2(REPO / "bin" / "install-guardrails.sh", fake_bin / "install-guardrails.sh")
+        self.marker = self.root / "gate-ran"
+        self.verifier = fake_bin / "verify-gate.py"
+        self.gate = fake_bin / "repository-gate.py"
+        self.gate.write_text(
+            "#!/bin/sh\n" f'printf %s reached > "{self.marker}"\n' "exit 0\n"
+        )
+        for script in (fake_bin / "install-guardrails.sh", self.gate):
+            script.chmod(script.stat().st_mode | stat.S_IXUSR)
+        self.clone = self.root / "clone"
+        self.clone.mkdir()
+        subprocess.run(["git", "init", "-q"], cwd=self.clone, check=True)
+        self.installer = fake_bin / "install-guardrails.sh"
+
+    def tearDown(self):
+        self.tmp.cleanup()
+
+    def _install_and_push(self, verifier_exit):
+        self.verifier.write_text(f"#!/bin/sh\necho 'gate integrity: tampered' >&2\nexit {verifier_exit}\n")
+        self.verifier.chmod(self.verifier.stat().st_mode | stat.S_IXUSR)
+        subprocess.run(
+            [str(self.installer), str(self.clone)],
+            check=True,
+            capture_output=True,
+            text=True,
+        )
+        hook = self.clone / ".git" / "hooks" / "pre-push"
+        self.assertTrue(hook.exists())
+        return subprocess.run(
+            [str(hook), "origin", "https://github.com/example/example.git"],
+            capture_output=True,
+            text=True,
+        )
+
+    def test_failing_integrity_check_blocks_the_push(self):
+        result = self._install_and_push(verifier_exit=1)
+        self.assertNotEqual(result.returncode, 0)
+        self.assertFalse(
+            self.marker.exists(),
+            "the gate ran even though the integrity check failed",
+        )
+
+    def test_passing_integrity_check_reaches_the_gate(self):
+        result = self._install_and_push(verifier_exit=0)
+        self.assertEqual(result.returncode, 0)
+        self.assertTrue(self.marker.exists())
