@@ -51,19 +51,103 @@ class ApiTest(unittest.TestCase):
             {row["repository"] for row in roster["candidates"]},
         )
 
-    def test_rankings_shows_ranking_documents_and_not_loop_notes(self):
-        """`deliverables/` also holds briefs and notes.
+    def test_launch_list_reports_enough_log_to_watch_a_run(self):
+        """The console polls this while a loop runs.
 
-        Those stay on disk as the archive of what a loop decided; the panel
-        answers what was ranked, and a brief listed beside a ranking reads as
-        though it were one.
+        A 2,000-character window truncated the first real run at 3,861, so a
+        reader watching live saw its last gasp rather than its progress. The
+        list also says how big the log really is and whether it was cut, so a
+        tail cannot be mistaken for the whole thing.
         """
-        (Path(self.api.deliverables) / "loop-2-ranking.md").write_text("# second")
-        (Path(self.api.deliverables) / "gate-widening-brief.md").write_text("# a note")
-        names = [doc["name"] for doc in self.api.rankings()]
-        self.assertIn("loop-1-ranking.md", names)
-        self.assertIn("loop-2-ranking.md", names)
-        self.assertNotIn("gate-widening-brief.md", names)
+        root = Path(self.tmp.name)
+        runs = root / ".loops" / "runs"
+        runs.mkdir(parents=True, exist_ok=True)
+        (runs / "loop-1.log").write_text("x" * 5000)
+        launches = self.console.Launcher(root).list()
+        self.assertEqual(len(launches), 1)
+        entry = launches[0]
+        self.assertEqual(entry["size"], 5000)
+        self.assertFalse(entry["truncated"])
+        self.assertEqual(len(entry["log_tail"]), 5000)
+
+    def test_launch_list_marks_a_log_it_had_to_cut(self):
+        root = Path(self.tmp.name)
+        runs = root / ".loops" / "runs"
+        runs.mkdir(parents=True, exist_ok=True)
+        oversized = self.console.LOG_TAIL_CHARS + 500
+        (runs / "loop-2.log").write_text("y" * oversized)
+        entry = self.console.Launcher(root).list()[0]
+        self.assertEqual(entry["size"], oversized)
+        self.assertTrue(entry["truncated"])
+        self.assertEqual(len(entry["log_tail"]), self.console.LOG_TAIL_CHARS)
+
+    def _run(self, name, argv):
+        """Spawn through the real detached path and wait for its status."""
+        import time
+        root = Path(self.tmp.name)
+        runs = root / ".loops" / "runs"
+        runs.mkdir(parents=True, exist_ok=True)
+        launcher = self.console.Launcher(root)
+        log = runs / (name + ".log")
+        (runs / (name + ".pid")).write_text(str(launcher._spawn_detached(argv, log)))
+        for _ in range(100):
+            if log.with_suffix(".status").exists():
+                break
+            time.sleep(0.05)
+        return launcher
+
+    def test_a_failing_run_is_recorded_as_failed_with_its_exit_code(self):
+        """The console never waits on the child, so the run records itself."""
+        launcher = self._run("boom", ["/bin/sh", "-c", "echo it broke >&2; exit 3"])
+        entry = next(e for e in launcher.list() if e["name"] == "boom")
+        self.assertEqual(entry["outcome"], "failed")
+        self.assertEqual(entry["exit_code"], 3)
+        self.assertIn("it broke", entry["log_tail"])
+
+    def test_a_recorded_status_outranks_a_live_looking_pid(self):
+        """A finished child is a zombie the console never reaps, so its pid
+        still answers `kill -0`. Without this the run reads as running for as
+        long as the console stays up."""
+        launcher = self._run("fine", ["/bin/sh", "-c", "echo done"])
+        entry = next(e for e in launcher.list() if e["name"] == "fine")
+        self.assertEqual(entry["outcome"], "succeeded")
+        self.assertEqual(entry["exit_code"], 0)
+        self.assertFalse(entry["running"])
+
+    def test_a_run_with_no_status_is_unknown_rather_than_passed(self):
+        root = Path(self.tmp.name)
+        runs = root / ".loops" / "runs"
+        runs.mkdir(parents=True, exist_ok=True)
+        (runs / "orphan.log").write_text("started and vanished")
+        entry = next(e for e in self.console.Launcher(root).list()
+                     if e["name"] == "orphan")
+        self.assertEqual(entry["outcome"], "unknown")
+        self.assertIsNone(entry["exit_code"])
+
+    def test_rankings_shows_only_the_latest_ranking(self):
+        """One ranking, not a stack of dropdowns for loops long finished.
+
+        Earlier rankings and any loop notes stay in `deliverables/` as the
+        archive of what each loop decided. The panel answers what the current
+        loop ranked, so a brief or a superseded ranking listed beside it reads
+        as though it were that.
+        """
+        import os
+        older = Path(self.api.deliverables) / "loop-1-ranking.md"
+        newer = Path(self.api.deliverables) / "loop-2-ranking.md"
+        note = Path(self.api.deliverables) / "gate-widening-brief.md"
+        newer.write_text("# second")
+        note.write_text("# a note")
+        os.utime(older, (1, 1))
+        os.utime(note, (10 ** 9, 10 ** 9))
+        docs = self.api.rankings()
+        self.assertEqual([doc["name"] for doc in docs], ["loop-2-ranking.md"])
+        self.assertEqual(docs[0]["text"], "# second")
+
+    def test_rankings_is_empty_when_no_loop_has_ranked(self):
+        for path in Path(self.api.deliverables).glob("*.md"):
+            path.unlink()
+        self.assertEqual(self.api.rankings(), [])
 
     def test_roster_attributes_exclusions_to_their_repository(self):
         """A filtered console needs the count for the repository on screen."""

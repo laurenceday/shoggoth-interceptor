@@ -206,18 +206,81 @@ async function startLoop(mode) {
   loadLaunches();
 }
 
+// Which launches the operator has opened, so a poll does not shut them.
+const openLaunches = new Set();
+let launchTimer = null;
+
 async function loadLaunches() {
   const launches = await getJSON("/api/loops");
   const box = $("launches");
   box.textContent = "";
-  box.appendChild(el("h2", null, "Loop launches (" + launches.length + ")"));
+  const running = launches.filter((launch) => launch.running).length;
+  box.appendChild(el("h2", null,
+    "Loop launches (" + launches.length + (running ? ", " + running + " running" : "") + ")"));
   for (const launch of launches) {
     const details = el("details");
+    // A running loop opens itself: watching it is the reason to be here. Any
+    // launch the operator opened stays open across the poll.
+    details.open = launch.running || openLaunches.has(launch.name);
+    details.addEventListener("toggle", () => {
+      if (details.open) openLaunches.add(launch.name);
+      else openLaunches.delete(launch.name);
+    });
+    const size = launch.size ? " · " + launch.size + " chars" : "";
+    const cut = launch.truncated ? " · showing the tail" : "";
     details.appendChild(el("summary", null,
-      launch.name + (launch.running ? " · running" : " · finished")));
-    details.appendChild(el("pre", "text", launch.log_tail || "(no output yet)"));
+      launch.name + (launch.running ? " · running" : " · finished") + size + cut));
+    const pre = el("pre", "text", launch.log_tail || "(no output yet)");
+    if (launch.running) {
+      // Newest output is at the bottom, which is where a reader watching a live
+      // run wants to be. Only for a running one: scrolling a finished log out
+      // from under someone reading it is worse than leaving it where they put it.
+      requestAnimationFrame(() => { pre.scrollTop = pre.scrollHeight; });
+    }
+    details.appendChild(pre);
     box.appendChild(details);
   }
+  // The newest launch drives the eye and the failure panel: older runs are
+  // history, and a failure from three loops ago is not the current state.
+  showRunState(launches[0]);
+  // Poll only while something is running, so an idle console is quiet.
+  if (launchTimer) { clearTimeout(launchTimer); launchTimer = null; }
+  if (running) launchTimer = setTimeout(loadLaunches, 3000);
+}
+
+function showRunState(latest) {
+  const eye = $("eye");
+  const title = $("eyeTitle");
+  const panel = $("failure");
+  eye.classList.remove("running", "failed");
+  panel.hidden = true;
+  panel.textContent = "";
+  if (!latest) {
+    title.textContent = "no run";
+    return;
+  }
+  if (latest.outcome === "running") {
+    eye.classList.add("running");
+    title.textContent = latest.name + " is running";
+    return;
+  }
+  if (latest.outcome === "failed") {
+    eye.classList.add("failed");
+    title.textContent = latest.name + " failed with exit " + latest.exit_code;
+    panel.hidden = false;
+    panel.appendChild(el("h2", null, "Run failed: " + latest.name));
+    panel.appendChild(el("p", "meta", "exit " + latest.exit_code +
+      " · " + latest.size + " chars of output" +
+      (latest.truncated ? " · last " + latest.log_tail.length + " shown" : "")));
+    // The end of the log is where a failure says why, so the panel opens there
+    // rather than making the reader scroll a wall of successful steps.
+    const lines = (latest.log_tail || "").trimEnd().split("\n");
+    panel.appendChild(el("pre", "text", lines.slice(-25).join("\n") || "(no output)"));
+    return;
+  }
+  title.textContent = latest.outcome === "succeeded"
+    ? latest.name + " finished cleanly"
+    : latest.name + " ended without a recorded status";
 }
 
 $("repoFilter").addEventListener("change", loadRoster);

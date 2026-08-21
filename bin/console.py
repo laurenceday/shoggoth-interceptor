@@ -209,12 +209,15 @@ class Api:
         """
         if not self.deliverables.is_dir():
             return []
-        docs = []
-        for path in sorted(self.deliverables.glob("*.md")):
-            if "ranking" not in path.stem.lower():
-                continue
-            docs.append({"name": path.name, "text": path.read_text()})
-        return docs
+        rankings = [path for path in self.deliverables.glob("*.md")
+                    if "ranking" in path.stem.lower()]
+        if not rankings:
+            return []
+        # The most recently written one, by modification time rather than by a
+        # number parsed out of the name: `loop-10` sorts before `loop-2` as text
+        # and `loop-1-ranking-scoped` has no number of its own to compare.
+        latest = max(rankings, key=lambda path: path.stat().st_mtime)
+        return [{"name": latest.name, "text": latest.read_text()}]
 
     # --- mutations: fixed argv only, validated input only ---
 
@@ -254,6 +257,11 @@ LOOP_PROMPT = (
 LAUNCH_MODES = {"smoke": SMOKE_PROMPT, "loop": LOOP_PROMPT}
 
 
+# How much of a run log the console carries per poll. Large enough to follow a
+# loop's reasoning, small enough that polling every few seconds stays cheap.
+LOG_TAIL_CHARS = 20000
+
+
 def pid_alive(pid: int) -> bool:
     import os
     try:
@@ -276,9 +284,15 @@ class Launcher:
 
     def _spawn_detached(self, argv, log_path: Path) -> int:
         import subprocess
+        # The console never waits on this child and may restart while it runs,
+        # so the run records its own exit status instead of being observed. The
+        # status path arrives as $0 and the command as "$@", so neither is
+        # interpolated into the script text; argv is fixed by start() anyway.
+        wrapper = ["/bin/sh", "-c", 'set +e; "$@"; printf %s "$?" > "$0"',
+                   str(log_path.with_suffix(".status")), *argv]
         with open(log_path, "ab") as log:
             proc = subprocess.Popen(
-                argv, stdout=log, stderr=log, stdin=subprocess.DEVNULL,
+                wrapper, stdout=log, stderr=log, stdin=subprocess.DEVNULL,
                 start_new_session=True,
             )
         return proc.pid
@@ -325,10 +339,39 @@ class Launcher:
                 except ValueError:
                     pid = None
             text = log_path.read_text(errors="replace")
+            # The console polls this while a loop runs, so the tail has to be
+            # long enough to watch progress rather than only its last gasp. A
+            # 2,000-character window already truncated the first real run.
+            tail = text[-LOG_TAIL_CHARS:]
+            exit_code = None
+            status_path = log_path.with_suffix(".status")
+            if status_path.exists():
+                try:
+                    exit_code = int(status_path.read_text().strip())
+                except ValueError:
+                    exit_code = None
+            # A recorded status outranks a live-looking pid. The console never
+            # waits on its children, so a finished run leaves a zombie whose
+            # pid still answers `kill -0` and would otherwise read as running
+            # for as long as the console stays up.
+            if exit_code is not None:
+                running = False
+                outcome = "succeeded" if exit_code == 0 else "failed"
+            else:
+                running = bool(pid and pid_alive(pid))
+                # `unknown` is its own answer, not a quiet success: a run
+                # predating the status file, or one whose shell was killed
+                # outright, leaves no evidence and is not drawn as though it
+                # passed.
+                outcome = "running" if running else "unknown"
             launches.append({
                 "name": log_path.stem,
-                "running": bool(pid and pid_alive(pid)),
-                "log_tail": text[-2000:],
+                "running": running,
+                "outcome": outcome,
+                "exit_code": exit_code,
+                "size": len(text),
+                "truncated": len(text) > len(tail),
+                "log_tail": tail,
             })
         return launches
 

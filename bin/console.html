@@ -39,6 +39,10 @@
            padding:0 7px; margin:1px 2px; font-size:11px; color:var(--dim); }
   #detail h2 { font-size:15px; margin:2px 0 6px; }
   #detail .meta { color:var(--dim); font-size:12px; margin-bottom:10px; }
+  /* A run log is bounded and scrolls in place: an unbounded one pushes every
+     other panel off the screen, and scrollTop has nothing to move without it. */
+  #launches pre.text { max-height:22rem; overflow-y:auto; }
+  #launches details[open] > summary { color:#58a6ff; }
   pre.text { white-space:pre-wrap; overflow-wrap:anywhere; background:var(--panel);
              border:1px solid var(--line); border-radius:6px; padding:10px; }
   .comment { border-left:3px solid var(--line); margin:10px 0; padding-left:10px; }
@@ -55,12 +59,42 @@
   a { color:#58a6ff; }
   #repoFilter { background:var(--panel); color:inherit; border:1px solid var(--line);
                 border-radius:6px; padding:4px 6px; font:inherit; }
+  #eye { flex:none; }
+  #eye #eyeOpen { fill:#1b1400; stroke:#6b5a1e; stroke-width:2; }
+  #eye #eyePupil { fill:#3a3010; }
+  #eye #eyeGlint { fill:transparent; }
+  #eye #eyeLid { fill:none; stroke:#6b5a1e; stroke-width:2.5; stroke-linecap:round;
+                 opacity:1; }
+  /* Awake: the eye opens and the lid lifts away. */
+  #eye.running #eyeOpen { fill:#ffd54a; stroke:#ffe89a; filter:drop-shadow(0 0 6px #ffcc33); }
+  #eye.running #eyePupil { fill:#1a1400; }
+  #eye.running #eyeGlint { fill:rgba(255,255,255,.85); }
+  #eye.running #eyeLid { opacity:0; }
+  #eye.running { animation:eyePulse 2.4s ease-in-out infinite; }
+  @keyframes eyePulse { 0%,100% { opacity:1; } 50% { opacity:.72; } }
+  /* Failed: open, and unmistakably not well. */
+  #eye.failed #eyeOpen { fill:#ff5c5c; stroke:#ffb0b0; filter:drop-shadow(0 0 6px #ff3b3b); }
+  #eye.failed #eyePupil { fill:#2a0000; }
+  #eye.failed #eyeGlint { fill:rgba(255,255,255,.8); }
+  #eye.failed #eyeLid { opacity:0; }
+  #failure { border:1px solid #ff5c5c; border-radius:8px; padding:10px 12px;
+             margin-bottom:12px; background:rgba(80,12,12,.35); }
+  #failure h2 { color:#ff8a8a; margin:0 0 6px; }
   th.sortable { cursor:pointer; user-select:none; }
   th.sortable:hover { color:#58a6ff; }
 </style>
 </head>
 <body>
 <header>
+  <!-- The eye is the run's state at a glance: open and yellow while a loop is
+       awake, red when one failed, lidded when nothing is running. -->
+  <svg id="eye" viewBox="0 0 64 34" width="42" height="23" role="img">
+    <title id="eyeTitle">no run</title>
+    <path id="eyeOpen" d="M2 17 Q32 -6 62 17 Q32 40 2 17 Z"/>
+    <ellipse id="eyePupil" cx="32" cy="17" rx="6.5" ry="13"/>
+    <circle id="eyeGlint" cx="29" cy="10" r="2.2"/>
+    <path id="eyeLid" d="M3 17 Q32 30 61 17"/>
+  </svg>
   <h1>SHOGGOTH INTERCEPTOR</h1>
   <span class="age" id="age"></span>
   <button id="btnRefresh">Refresh issues</button>
@@ -80,6 +114,7 @@
     </table>
   </div>
   <div id="right">
+    <section id="failure" hidden></section>
     <section id="detail"><p class="meta">Select a ticket.</p></section>
     <section id="rankings"></section>
     <section id="launches"></section>
