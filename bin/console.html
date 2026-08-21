@@ -83,6 +83,8 @@
   #failure { border:1px solid #ff5c5c; border-radius:8px; padding:10px 12px;
              margin-bottom:12px; background:rgba(80,12,12,.35); }
   #failure h2 { color:#ff8a8a; margin:0 0 6px; }
+  #btnStop { border-color:#ff5c5c; color:#ff8a8a; }
+  #btnStop:hover { background:rgba(120,20,20,.35); }
   th.sortable { cursor:pointer; user-select:none; }
   th.sortable:hover { color:#58a6ff; }
 </style>
@@ -110,6 +112,7 @@
   <button id="btnArchive">Cut archive</button>
   <button id="btnSmoke">Smoke launch</button>
   <button id="btnLoop">Start loop</button>
+  <button id="btnStop" hidden>Kill loop</button>
   <span id="status"></span>
 </header>
 <main>

@@ -13,6 +13,7 @@ Run: python3 bin/console.py [--port 8737]
 import json
 import re
 import subprocess
+import os
 import sys
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
@@ -307,6 +308,23 @@ LOG_TAIL_CHARS = 20000
 
 def pid_alive(pid: int) -> bool:
     import os
+    # Reap first. The console spawns runs and never waits on them, so a
+    # finished run stays a zombie, and a zombie answers `kill -0` exactly like
+    # a live process -- which read as "still running" and jammed both `start()`
+    # and `stop()`. Collecting it here is what makes the answer true. The wait
+    # status is dropped on purpose: the wrapper already records the run's own
+    # exit code, and that record is the one the console reports.
+    try:
+        reaped, _ = os.waitpid(pid, os.WNOHANG)
+        if reaped == pid:
+            return False
+    except ChildProcessError:
+        # Not ours -- the console restarted and this run was orphaned to init,
+        # which also means no zombie can be attributed to us. `kill -0` is
+        # then the whole answer.
+        pass
+    except (OSError, ValueError):
+        pass
     try:
         os.kill(pid, 0)
         return True
@@ -331,7 +349,15 @@ class Launcher:
         # so the run records its own exit status instead of being observed. The
         # status path arrives as $0 and the command as "$@", so neither is
         # interpolated into the script text; argv is fixed by start() anyway.
-        wrapper = ["/bin/sh", "-c", 'set +e; "$@"; printf %s "$?" > "$0"',
+        # The trap is what makes a killed run reportable. Without it SIGTERM
+        # reaches the shell before the final printf and the status is never
+        # written, so a terminated run reads as `unknown` and is
+        # indistinguishable from one whose console died.
+        script = ('set +e; '
+                  'trap \'code=$?; printf %s "$code" > "$0"; exit "$code"\' TERM INT; '
+                  '"$@"; '
+                  'printf %s "$?" > "$0"')
+        wrapper = ["/bin/sh", "-c", script,
                    str(log_path.with_suffix(".status")), *argv]
         with open(log_path, "ab") as log:
             proc = subprocess.Popen(
@@ -345,6 +371,13 @@ class Launcher:
             try:
                 pid = int(pidfile.read_text().strip())
             except ValueError:
+                continue
+            # A recorded status means the run is over, whatever the pid says.
+            # The console never reaps its children, so a finished run leaves a
+            # zombie that still answers `kill -0`, and reading only the pid
+            # jammed `start()` on "still running" for as long as the console
+            # stayed up. Same rule `list()` applies.
+            if pidfile.with_suffix(".status").exists():
                 continue
             if pid_alive(pid):
                 return {"name": pidfile.stem, "pid": pid}
@@ -368,6 +401,98 @@ class Launcher:
         print(f"launched {name} (pid {pid}) -> {log_path}", file=sys.stderr)
         return {"ok": True, "name": name, "pid": pid,
                 "log": f".loops/runs/{name}.log"}
+
+    def stop(self):
+        """Terminate the run this console launched, and nothing else.
+
+        The client names no pid. The only killable process is the one whose
+        pidfile this launcher wrote and whose pid is still alive, so a request
+        cannot reach anything else on the machine.
+
+        The whole process group goes, not just the leader: `start_new_session`
+        put the run in its own session, and signalling only the shell wrapper
+        would leave the agent it spawned running with nothing watching it.
+        """
+        import signal
+        import time
+        running = self._running()
+        if not running:
+            return {"ok": False, "error": "no launch is running"}
+        pid = running["pid"]
+        # Only ever signal a group the run leads. `start_new_session` makes the
+        # child a session and group leader, but not instantly: for a moment
+        # after the spawn `getpgid` still reports the console's own group, and
+        # signalling that would kill the console and everything beside it.
+        # Leadership is the proof the group belongs to the run.
+        group = None
+        for _ in range(20):
+            try:
+                candidate = os.getpgid(pid)
+            except ProcessLookupError:
+                return {"ok": False, "error": f"launch {running['name']} is already gone"}
+            except PermissionError as error:
+                return {"ok": False, "error": f"cannot resolve process group: {error}"}
+            if candidate == pid:
+                group = candidate
+                break
+            time.sleep(0.05)
+        if group is None:
+            return {"ok": False,
+                    "error": f"launch {running['name']} never led its own process "
+                             "group; refusing to signal a group it may share"}
+        status_path = self.loops_dir / f"{running['name']}.status"
+
+        def signal_group():
+            """Send SIGTERM to the run's group. True if it was there to take it.
+
+            SIGTERM only. The wrapper traps it and records the exit status on
+            the way out, so a terminated run reports as failed with a signal
+            code rather than vanishing into `unknown`; SIGKILL would deny it
+            that. The group and not the leader alone: the shell defers its
+            trap until the foreground command returns, so signalling only the
+            wrapper leaves both it and the agent running until the command
+            ends on its own.
+            """
+            try:
+                os.killpg(group, signal.SIGTERM)
+                return True
+            except ProcessLookupError:
+                return False
+            except PermissionError:
+                # A group holding nothing but the zombie leader refuses
+                # signals on macOS. That is what a group that has already
+                # taken the signal looks like, not a failure to deliver.
+                return False
+
+        def settled(deadline):
+            while time.monotonic() < deadline:
+                if status_path.exists() or not pid_alive(pid):
+                    return True
+                time.sleep(0.05)
+            return status_path.exists()
+
+        delivered = signal_group()
+        if not settled(time.monotonic() + 2.0):
+            # The trap is not installed instantly, and a signal landing between
+            # exec and the trap takes the default action and leaves no status.
+            # By now the trap is long installed, so try once more.
+            delivered = signal_group() or delivered
+            settled(time.monotonic() + 2.0)
+        if not status_path.exists() and not pid_alive(pid):
+            # The run died without recording anything. The trap is installed by
+            # the first line of the wrapper but not instantly, and a signal
+            # landing between exec and the trap takes SIGTERM's default action:
+            # the shell dies before it can write, and the retry above finds
+            # nothing left to signal. The console records it instead. 143 is
+            # not a guess -- it is the wait status of a process terminated by
+            # SIGTERM, which is exactly what happened, and without it a
+            # deliberate kill would read as `unknown` and be indistinguishable
+            # from a run whose console died under it.
+            status_path.write_text(str(128 + int(signal.SIGTERM)))
+        print(f"terminated {running['name']} (pid {pid})", file=sys.stderr)
+        return {"ok": True, "name": running["name"], "pid": pid, "signal": "SIGTERM",
+                "group": group, "delivered": delivered,
+                "status_recorded": status_path.exists()}
 
     def list(self):
         launches = []
@@ -454,6 +579,8 @@ class Handler(BaseHTTPRequestHandler):
             return self._send_json(self.api.refresh())
         if path == "/api/archive":
             return self._send_json(self.api.archive())
+        if path == "/api/stop-loop":
+            return self._send_json(self.launcher.stop())
         if path == "/api/start-loop":
             body = self._read_body()
             if body is None:

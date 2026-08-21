@@ -34,5 +34,12 @@
   "reason": "not in scope for shoggoth",
   "excluded_at": "2026-08-20T07:34:58.421042+00:00",
   "key": "wildcat-finance/product#696"
+ },
+ {
+  "key": "aave/aave-v4#853",
+  "repository": "aave/aave-v4",
+  "number": 853,
+  "reason": "loop 5 delivered a decision brief, not a branch: neither candidate is adoptable until Aave settles what drawnRate means. Summary in .loops/deliverables/issue-aave-aave-v4-853",
+  "excluded_at": "2026-08-21T22:48:10.280623+00:00"
  }
 ]

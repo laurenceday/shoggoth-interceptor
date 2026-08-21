@@ -286,6 +286,8 @@ async function loadLaunches() {
 
 function showRunState(latest) {
   const eye = $("eye");
+  // The kill button exists only while there is something to kill.
+  $("btnStop").hidden = !(latest && latest.outcome === "running");
   const title = $("eyeTitle");
   const panel = $("failure");
   eye.classList.remove("running", "failed");
@@ -298,6 +300,7 @@ function showRunState(latest) {
   if (latest.outcome === "running") {
     eye.classList.add("running");
     title.textContent = latest.name + " is running";
+    $("btnStop").dataset.name = latest.name;
     return;
   }
   if (latest.outcome === "failed") {
@@ -332,6 +335,14 @@ function cycleSort(column) {
 $("thNum").addEventListener("click", () => cycleSort("number"));
 $("thPos").addEventListener("click", () => cycleSort("position"));
 $("pipeFilter").addEventListener("change", loadRoster);
+$("btnStop").addEventListener("click", async () => {
+  const latest = $("btnStop").dataset.name || "the running loop";
+  if (!confirm("Terminate " + latest + "? The run stops where it is.")) return;
+  setStatus("terminating…");
+  const result = await postJSON("/api/stop-loop", {});
+  setStatus(result.ok ? "sent SIGTERM to " + result.name : result.error, result.ok);
+  loadLaunches();
+});
 $("btnSmoke").addEventListener("click", () => startLoop("smoke"));
 $("btnLoop").addEventListener("click", () => startLoop("loop"));
 
