@@ -305,6 +305,153 @@ LAUNCH_MODES = {"smoke": SMOKE_PROMPT, "loop": LOOP_PROMPT}
 # loop's reasoning, small enough that polling every few seconds stays cheap.
 LOG_TAIL_CHARS = 20000
 
+# Runs are launched with `--output-format stream-json`, which emits one JSON
+# event per line as the work happens rather than a single blob at exit. The
+# envelopes are far larger than what they say, so only the tail is read and
+# only the useful part of each event is passed on.
+LOG_TAIL_BYTES = 400_000
+STREAM_MAX_EVENTS = 300
+
+# Field that carries the point of each tool call. Bash says what it ran, the
+# file tools say what they touched; without this the console can only report
+# that some tool was used.
+TOOL_SUBJECT = {
+    "Bash": "command", "Read": "file_path", "Write": "file_path",
+    "Edit": "file_path", "NotebookEdit": "notebook_path", "Glob": "pattern",
+    "Grep": "pattern", "WebFetch": "url", "WebSearch": "query",
+    "Task": "description", "Agent": "description", "Skill": "skill",
+}
+STREAM_EVENT_TYPES = {"system", "assistant", "user", "result", "rate_limit_event"}
+
+
+def read_tail(path: Path, limit: int):
+    """Return the last `limit` bytes as text, the full size, and whether it cut.
+
+    A long loop writes megabytes and the console polls every few seconds, so
+    the whole file is never read. Whether it seeked is what tells the parser
+    its first line is debris: a line cut mid-object cannot be told from a
+    genuine non-JSON one by looking, because the run's own stderr is prose too.
+    """
+    size = path.stat().st_size
+    cut = size > limit
+    with open(path, "rb") as handle:
+        if cut:
+            handle.seek(size - limit)
+        raw = handle.read()
+    return raw.decode("utf-8", errors="replace"), size, cut
+
+
+def _shorten(value, limit=220):
+    text = " ".join(str(value).split())
+    return text if len(text) <= limit else text[: limit - 1] + "\u2026"
+
+
+def _tool_subject(name, params):
+    if not isinstance(params, dict):
+        return ""
+    field = TOOL_SUBJECT.get(name)
+    if field and params.get(field):
+        return _shorten(params[field])
+    if params.get("description"):
+        return _shorten(params["description"])
+    for value in params.values():
+        if isinstance(value, (str, int, float)) and str(value).strip():
+            return _shorten(value)
+    return ""
+
+
+def summarise_stream(text, first_line_cut=False):
+    """Turn stream-json log text into display events, or None if it is not.
+
+    Returns None for the plain-text logs written before runs streamed, so the
+    caller can fall back to showing them raw rather than showing nothing.
+
+    Lines that are not JSON are kept as `stderr` events. The run's stderr
+    shares this file, so those lines are how a crash, a missing binary or a
+    permission refusal reaches the console; dropping them would hide exactly
+    the failures worth seeing.
+    """
+    lines = text.split("\n")
+    if first_line_cut and lines:
+        # Read from the middle of the file, so line one is half an object.
+        lines = lines[1:]
+    events = []
+    structured = 0
+    for index, line in enumerate(lines):
+        line = line.strip()
+        if not line:
+            continue
+        if not line.startswith("{"):
+            events.append({"kind": "stderr", "text": _shorten(line, 400)})
+            continue
+        try:
+            event = json.loads(line)
+        except json.JSONDecodeError:
+            # The last line may still be mid-write, which is not a fault.
+            if index != len(lines) - 1:
+                events.append({"kind": "stderr", "text": _shorten(line, 400)})
+            continue
+        if not isinstance(event, dict) or event.get("type") not in STREAM_EVENT_TYPES:
+            continue
+        structured += 1
+        events.extend(_describe(event))
+    if not structured:
+        return None
+    return events
+
+
+def _describe(event):
+    """One stream event to zero or more display lines."""
+    kind = event.get("type")
+    subtype = event.get("subtype")
+    # A nested tool id means a subagent is speaking, not the loop itself.
+    nested = bool(event.get("parent_tool_use_id"))
+    if kind == "system" and subtype == "init":
+        return [{"kind": "init", "text": f"session on {event.get('model') or 'unknown model'}",
+                 "detail": _shorten(event.get("cwd") or "")}]
+    if kind == "system" and subtype in ("task_summary", "post_turn_summary"):
+        detail = event.get("detail") or event.get("status_detail")
+        return [{"kind": "note", "text": _shorten(detail), "nested": nested}] if detail else []
+    if kind == "rate_limit_event":
+        info = event.get("rate_limit_info") or {}
+        status = info.get("status") or info.get("state")
+        return [{"kind": "note", "text": f"rate limit: {_shorten(status)}"}] if status else []
+    if kind == "assistant":
+        out = []
+        for block in (event.get("message") or {}).get("content") or []:
+            if not isinstance(block, dict):
+                continue
+            if block.get("type") == "tool_use":
+                out.append({"kind": "tool", "text": block.get("name") or "tool",
+                            "detail": _tool_subject(block.get("name"), block.get("input")),
+                            "nested": nested})
+            elif block.get("type") == "text" and block.get("text", "").strip():
+                out.append({"kind": "text", "text": _shorten(block["text"], 1200),
+                            "nested": nested})
+        return out
+    if kind == "user":
+        # Only failures: a successful tool result repeats what the tool
+        # already announced, and there is one for every call.
+        out = []
+        for block in (event.get("message") or {}).get("content") or []:
+            if isinstance(block, dict) and block.get("type") == "tool_result" and block.get("is_error"):
+                out.append({"kind": "error", "text": _shorten(block.get("content"), 600),
+                            "nested": nested})
+        return out
+    if kind == "result":
+        parts = []
+        if event.get("num_turns") is not None:
+            parts.append(f"{event['num_turns']} turns")
+        if event.get("duration_ms") is not None:
+            parts.append(f"{event['duration_ms'] / 1000:.0f}s")
+        if event.get("total_cost_usd") is not None:
+            parts.append(f"${event['total_cost_usd']:.2f}")
+        failed = bool(event.get("is_error")) or subtype != "success"
+        return [{"kind": "error" if failed else "result",
+                 "text": _shorten(event.get("result") or subtype or "finished", 1200),
+                 "detail": " \u00b7 ".join(parts)}]
+    return []
+
 
 def pid_alive(pid: int) -> bool:
     import os
@@ -394,8 +541,12 @@ class Launcher:
         from datetime import datetime, timezone
         name = f"{mode}-{datetime.now(timezone.utc).strftime('%Y%m%d-%H%M%S')}"
         log_path = self.loops_dir / f"{name}.log"
+        # stream-json so the log fills as the work happens. The default text
+        # format prints one blob at exit, which left the console showing "no
+        # output yet" for the whole of a run. `--verbose` is required with it.
         argv = ["claude", "-p", LAUNCH_MODES[mode],
-                "--permission-mode", "acceptEdits"]
+                "--permission-mode", "acceptEdits",
+                "--output-format", "stream-json", "--verbose"]
         pid = self.spawn(argv, log_path)
         (self.loops_dir / f"{name}.pid").write_text(str(pid))
         print(f"launched {name} (pid {pid}) -> {log_path}", file=sys.stderr)
@@ -506,11 +657,20 @@ class Launcher:
                     pid = int(pidfile.read_text().strip())
                 except ValueError:
                     pid = None
-            text = log_path.read_text(errors="replace")
-            # The console polls this while a loop runs, so the tail has to be
-            # long enough to watch progress rather than only its last gasp. A
-            # 2,000-character window already truncated the first real run.
-            tail = text[-LOG_TAIL_CHARS:]
+            # Never the whole file: a streaming run writes megabytes and this
+            # is polled every few seconds.
+            raw, size, cut = read_tail(log_path, LOG_TAIL_BYTES)
+            found = summarise_stream(raw, first_line_cut=cut)
+            # `None` means a plain-text log from before runs streamed. Those
+            # still have to render, so they keep the raw tail they always had.
+            if found is None:
+                events, tail = [], raw[-LOG_TAIL_CHARS:]
+                shown = len(tail.encode("utf-8", errors="replace"))
+                clipped = False
+            else:
+                events, tail = found[-STREAM_MAX_EVENTS:], ""
+                shown = len(raw.encode("utf-8", errors="replace"))
+                clipped = len(events) < len(found)
             exit_code = None
             status_path = log_path.with_suffix(".status")
             if status_path.exists():
@@ -537,9 +697,14 @@ class Launcher:
                 "running": running,
                 "outcome": outcome,
                 "exit_code": exit_code,
-                "size": len(text),
-                "truncated": len(text) > len(tail),
+                "size": size,
+                # True whenever the console is showing less than the run
+                # produced -- either the file outran the tail read, or the
+                # events outran the cap.
+                "truncated": size > shown or clipped,
                 "log_tail": tail,
+                "events": events,
+                "streaming": found is not None,
             })
         return launches
 

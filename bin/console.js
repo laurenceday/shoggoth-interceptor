@@ -246,6 +246,32 @@ async function startLoop(mode) {
 const openLaunches = new Set();
 let launchTimer = null;
 
+// A streamed run arrives as events rather than text: one line per tool call,
+// note or message, so the reader can see what the loop is doing rather than
+// waiting for the single blob the old text format only printed at exit.
+const EVENT_PREFIX = {
+  tool: "\u25b8", text: "\u00b7", note: "\u2026", init: "\u25c6",
+  result: "\u2714", error: "\u2718", stderr: "!",
+};
+
+function renderEvents(events) {
+  const box = el("div", "events");
+  if (!events || !events.length) {
+    box.appendChild(el("div", "event note", "(no output yet)"));
+    return box;
+  }
+  for (const event of events) {
+    // Subagent output is indented so it reads as work inside a step rather
+    // than as another step.
+    const row = el("div", "event " + event.kind + (event.nested ? " nested" : ""));
+    row.appendChild(el("span", "sigil", EVENT_PREFIX[event.kind] || "\u00b7"));
+    row.appendChild(el("span", "what", event.text || ""));
+    if (event.detail) row.appendChild(el("span", "detail", event.detail));
+    box.appendChild(row);
+  }
+  return box;
+}
+
 async function loadLaunches() {
   const launches = await getJSON("/api/loops");
   const box = $("launches");
@@ -262,18 +288,20 @@ async function loadLaunches() {
       if (details.open) openLaunches.add(launch.name);
       else openLaunches.delete(launch.name);
     });
-    const size = launch.size ? " · " + launch.size + " chars" : "";
+    const size = launch.size ? " · " + launch.size + " bytes" : "";
     const cut = launch.truncated ? " · showing the tail" : "";
     details.appendChild(el("summary", null,
       launch.name + (launch.running ? " · running" : " · finished") + size + cut));
-    const pre = el("pre", "text", launch.log_tail || "(no output yet)");
+    const body = launch.streaming
+      ? renderEvents(launch.events)
+      : el("pre", "text", launch.log_tail || "(no output yet)");
     if (launch.running) {
       // Newest output is at the bottom, which is where a reader watching a live
       // run wants to be. Only for a running one: scrolling a finished log out
       // from under someone reading it is worse than leaving it where they put it.
-      requestAnimationFrame(() => { pre.scrollTop = pre.scrollHeight; });
+      requestAnimationFrame(() => { body.scrollTop = body.scrollHeight; });
     }
-    details.appendChild(pre);
+    details.appendChild(body);
     box.appendChild(details);
   }
   // The newest launch drives the eye and the failure panel: older runs are

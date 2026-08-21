@@ -42,6 +42,19 @@
   /* A run log is bounded and scrolls in place: an unbounded one pushes every
      other panel off the screen, and scrollTop has nothing to move without it. */
   #launches pre.text { max-height:22rem; overflow-y:auto; }
+  .events { max-height:22rem; overflow-y:auto; font-size:12px; line-height:1.5; }
+  .event { display:flex; gap:8px; padding:2px 0; align-items:baseline; }
+  .event .sigil { flex:0 0 1ch; color:#6e7681; }
+  .event .what { white-space:pre-wrap; word-break:break-word; }
+  .event .detail { color:#8b949e; white-space:pre-wrap; word-break:break-all;
+                   border-left:1px solid #30363d; padding-left:8px; }
+  .event.nested { padding-left:16px; }
+  .event.tool .what { color:#58a6ff; }
+  .event.text .what { color:#c9d1d9; }
+  .event.note { color:#8b949e; }
+  .event.init { color:#a371f7; }
+  .event.result .what { color:#3fb950; }
+  .event.error .what, .event.stderr .what { color:#ff8a8a; }
   #launches details[open] > summary { color:#58a6ff; }
   pre.text { white-space:pre-wrap; overflow-wrap:anywhere; background:var(--panel);
              border:1px solid var(--line); border-radius:6px; padding:10px; }

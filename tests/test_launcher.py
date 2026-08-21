@@ -46,9 +46,114 @@ class LauncherTest(unittest.TestCase):
             result = self.launcher.start(mode)
             self.assertTrue(result["ok"], result)
             argv = self.spawn.calls[-1][0]
+            # stream-json is what makes a run watchable while it runs;
+            # --verbose is required alongside it.
             self.assertEqual(argv, [
                 "claude", "-p", prompt, "--permission-mode", "acceptEdits",
+                "--output-format", "stream-json", "--verbose",
             ])
+
+    # --- streamed run logs -------------------------------------------------
+
+    def _stream(self, *events):
+        import json
+        return "\n".join(json.dumps(e) for e in events) + "\n"
+
+    def test_a_streamed_log_becomes_events(self):
+        log = self._stream(
+            {"type": "system", "subtype": "init", "model": "claude-opus-5",
+             "cwd": "/repo"},
+            {"type": "assistant", "message": {"content": [
+                {"type": "tool_use", "name": "Bash",
+                 "input": {"command": "git status", "description": "check"}}]}},
+            {"type": "assistant", "message": {"content": [
+                {"type": "text", "text": "ranking the candidates"}]}},
+            {"type": "result", "subtype": "success", "result": "done",
+             "num_turns": 3, "duration_ms": 9000, "total_cost_usd": 1.5},
+        )
+        events = self.console.summarise_stream(log)
+        kinds = [e["kind"] for e in events]
+        self.assertEqual(kinds, ["init", "tool", "text", "result"])
+        # The subject is the point of the call: which command, not that some
+        # tool ran.
+        self.assertEqual(events[1]["text"], "Bash")
+        self.assertEqual(events[1]["detail"], "git status")
+        self.assertIn("3 turns", events[3]["detail"])
+        self.assertIn("$1.50", events[3]["detail"])
+
+    def test_a_plain_text_log_is_not_read_as_a_stream(self):
+        """Logs written before runs streamed still have to render.
+
+        `summarise_stream` returning None is what routes them back to the raw
+        tail they always had, rather than showing an empty event list.
+        """
+        self.assertIsNone(self.console.summarise_stream(
+            "Loop complete. Delivered issue #12.\nArchive cut.\n"))
+
+    def test_stderr_in_a_streamed_log_is_surfaced(self):
+        """The run's stderr shares this file, and it is where crashes land.
+
+        A traceback or a missing binary is not JSON, so a parser that kept
+        only JSON would drop exactly the output worth reading.
+        """
+        log = ("claude: command not found\n"
+               + self._stream({"type": "result", "subtype": "error_during_execution",
+                               "is_error": True, "result": "boom"}))
+        events = self.console.summarise_stream(log)
+        self.assertEqual(events[0]["kind"], "stderr")
+        self.assertIn("command not found", events[0]["text"])
+        # A non-success result is an error, not a quiet finish.
+        self.assertEqual(events[-1]["kind"], "error")
+
+    def test_a_failed_tool_result_is_surfaced_but_a_successful_one_is_not(self):
+        """Every call gets a result; only the failures say anything new."""
+        log = self._stream(
+            {"type": "user", "message": {"content": [
+                {"type": "tool_result", "is_error": False, "content": "ok"}]}},
+            {"type": "user", "message": {"content": [
+                {"type": "tool_result", "is_error": True, "content": "no such file"}]}},
+        )
+        events = self.console.summarise_stream(log)
+        self.assertEqual([e["kind"] for e in events], ["error"])
+        self.assertIn("no such file", events[0]["text"])
+
+    def test_a_line_cut_by_the_tail_read_is_not_reported_as_an_error(self):
+        """Reading only the tail of a long log cuts its first line in half.
+
+        That is an artefact of how the file is read, not something the run
+        emitted, so it must not surface as stderr.
+        """
+        log = ('ent": "half an object"}}\n'
+               + self._stream({"type": "assistant", "message": {"content": [
+                   {"type": "text", "text": "still going"}]}}))
+        events = self.console.summarise_stream(log, first_line_cut=True)
+        self.assertEqual([e["kind"] for e in events], ["text"])
+        # Without the cut flag the same line is real output and is kept: the
+        # run's own stderr is prose too, and cannot be told apart by looking.
+        self.assertEqual(
+            [e["kind"] for e in self.console.summarise_stream(log)],
+            ["stderr", "text"])
+
+    def test_read_tail_returns_the_end_and_the_true_size(self):
+        path = self.root / "big.log"
+        path.write_text("a" * 100 + "TAIL")
+        text, size, cut = self.console.read_tail(path, 4)
+        self.assertEqual(text, "TAIL")
+        self.assertEqual(size, 104)
+        self.assertTrue(cut)
+        self.assertFalse(self.console.read_tail(path, 10_000)[2])
+
+    def test_a_streamed_run_reports_events_and_hides_no_output(self):
+        """End to end through `list()`: the payload the console renders."""
+        runs = self.root / ".loops" / "runs"
+        runs.mkdir(parents=True, exist_ok=True)
+        (runs / "loop-1.log").write_text(self._stream(
+            {"type": "assistant", "message": {"content": [
+                {"type": "tool_use", "name": "Read", "input": {"file_path": "CLAUDE.md"}}]}}))
+        entry = self.console.Launcher(self.root).list()[0]
+        self.assertTrue(entry["streaming"])
+        self.assertEqual(entry["log_tail"], "")
+        self.assertEqual(entry["events"][0]["detail"], "CLAUDE.md")
 
     def test_stop_refuses_when_nothing_is_running(self):
         self.assertEqual(self.launcher.stop()["ok"], False)
