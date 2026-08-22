@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """Shoggoth operator console — a local, read-mostly window onto the loop state.
 
-Serves the issue roster, detail, rankings, exclusions, and deliverables
+Serves the issue roster, detail, exclusions, and deliverables
 as JSON over 127.0.0.1 only. Credentials are never read here; only
 bin/shoggoth.py touches .env, and no endpoint serialises anything outside the
 `.loops/` tree. Board text is returned as JSON strings and must be rendered as
@@ -242,26 +242,6 @@ class Api:
         if not folder.is_dir() or not folder.resolve().is_relative_to(self.deliverables.resolve()):
             return []
         return sorted(p.name for p in folder.iterdir() if p.is_file())
-
-    def rankings(self):
-        """Ranking documents only.
-
-        `deliverables/` also holds loop notes and briefs. Those stay on disk as
-        the archive of what a loop decided, and the console does not show them:
-        the panel exists to answer what was ranked, and a brief alongside a
-        ranking reads as though it were one.
-        """
-        if not self.deliverables.is_dir():
-            return []
-        rankings = [path for path in self.deliverables.glob("*.md")
-                    if "ranking" in path.stem.lower()]
-        if not rankings:
-            return []
-        # The most recently written one, by modification time rather than by a
-        # number parsed out of the name: `loop-10` sorts before `loop-2` as text
-        # and `loop-1-ranking-scoped` has no number of its own to compare.
-        latest = max(rankings, key=lambda path: path.stat().st_mtime)
-        return [{"name": latest.name, "text": latest.read_text()}]
 
     # --- mutations: fixed argv only, validated input only ---
 
@@ -800,8 +780,6 @@ class Handler(BaseHTTPRequestHandler):
             return self._send_json(self.launcher.list())
         if path == "/api/roster":
             return self._send_json(api.roster())
-        if path == "/api/rankings":
-            return self._send_json(api.rankings())
         if path == "/api/excluded":
             return self._send_json(api.excluded())
         match = re.fullmatch(

@@ -195,19 +195,6 @@ async function loadIssue(key) {
   box.appendChild(form);
 }
 
-async function loadRankings() {
-  const docs = await getJSON("/api/rankings");
-  const box = $("rankings");
-  box.textContent = "";
-  box.appendChild(el("h2", null, "Rankings"));
-  for (const doc of docs) {
-    const details = el("details");
-    details.appendChild(el("summary", null, doc.name));
-    details.appendChild(el("pre", "text", doc.text));
-    box.appendChild(details);
-  }
-}
-
 async function loadExcluded() {
   const all = await getJSON("/api/excluded");
   const chosen = $("repoFilter").value;
@@ -382,6 +369,5 @@ $("btnArchive").addEventListener("click", async () => {
 
 loadHealth();
 loadRoster();
-loadRankings();
 loadExcluded();
 loadLaunches();

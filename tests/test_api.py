@@ -124,31 +124,6 @@ class ApiTest(unittest.TestCase):
         self.assertEqual(entry["outcome"], "unknown")
         self.assertIsNone(entry["exit_code"])
 
-    def test_rankings_shows_only_the_latest_ranking(self):
-        """One ranking, not a stack of dropdowns for loops long finished.
-
-        Earlier rankings and any loop notes stay in `deliverables/` as the
-        archive of what each loop decided. The panel answers what the current
-        loop ranked, so a brief or a superseded ranking listed beside it reads
-        as though it were that.
-        """
-        import os
-        older = Path(self.api.deliverables) / "loop-1-ranking.md"
-        newer = Path(self.api.deliverables) / "loop-2-ranking.md"
-        note = Path(self.api.deliverables) / "gate-widening-brief.md"
-        newer.write_text("# second")
-        note.write_text("# a note")
-        os.utime(older, (1, 1))
-        os.utime(note, (10 ** 9, 10 ** 9))
-        docs = self.api.rankings()
-        self.assertEqual([doc["name"] for doc in docs], ["loop-2-ranking.md"])
-        self.assertEqual(docs[0]["text"], "# second")
-
-    def test_rankings_is_empty_when_no_loop_has_ranked(self):
-        for path in Path(self.api.deliverables).glob("*.md"):
-            path.unlink()
-        self.assertEqual(self.api.rankings(), [])
-
     def test_roster_attributes_exclusions_to_their_repository(self):
         """A filtered console needs the count for the repository on screen."""
         roster = self.api.roster()
@@ -264,10 +239,6 @@ class ApiTest(unittest.TestCase):
 
     def test_unknown_issue_is_none(self):
         self.assertIsNone(self.api.issue("wildcat-finance/product#999999"))
-
-    def test_rankings_lists_top_level_docs_only(self):
-        names = [d["name"] for d in self.api.rankings()]
-        self.assertEqual(names, ["loop-1-ranking.md"])
 
     def test_health_reports_state_ages(self):
         ages = self.api.health()["state_age_seconds"]
