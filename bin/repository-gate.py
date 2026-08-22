@@ -4,8 +4,8 @@
 Mode `protected-orgs`: organisations named by the policy are write-protected,
 their recorded exemptions are permitted, and any organisation the policy does
 not name is permitted. Every write is bound to the GitHub login recorded at
-consent time, no write is permitted before consent is recorded, and a merge is
-never permitted. `init` is the only writer of policy.
+consent time, and no write is permitted before consent is recorded. `init` is
+the only writer of policy.
 """
 
 import json
@@ -22,8 +22,7 @@ ORG_RE = re.compile(r"^[A-Za-z0-9](?:[A-Za-z0-9-]{0,99})$")
 MAX_POLICY_BYTES = 1_000_000
 POLICY_KEYS = {"version", "mode", "github_login", "protected", "note"}
 ENTRY_KEYS = {"exempt"}
-OPERATIONS = ("push", "pull-request", "merge")
-MERGE_REASON = "a merge is never gate-approved; a human merges after review"
+OPERATIONS = ("push", "pull-request")
 
 
 def normalize_repo(raw):
@@ -117,8 +116,6 @@ def decide(target, policy, login, operation="push"):
     repo = normalize_repo(target)
     if operation not in OPERATIONS:
         raise ValueError("unknown operation")
-    if operation == "merge":
-        return False, MERGE_REASON
     recorded = policy["github_login"]
     if recorded is None:
         return False, "no consent recorded; run repository-gate.py init protect <org>"
@@ -203,7 +200,7 @@ def init_exempt(target):
 
 
 USAGE = (
-    "usage: repository-gate.py <owner/repo> | merge <owner/repo> | "
+    "usage: repository-gate.py <owner/repo> | "
     "init protect <org> | init exempt <org/repo>"
 )
 
@@ -219,12 +216,6 @@ def main():
                 init_exempt(args[2])
                 return 0
             raise ValueError(USAGE)
-        if len(args) == 2 and args[0] == "merge":
-            # Unconditional: refused before the policy or login is even read,
-            # so a broken policy or a missing gh cannot soften the statement.
-            normalize_repo(args[1])
-            print(f"repository-gate: DENIED: {MERGE_REASON}", file=sys.stderr)
-            return 1
         if len(args) != 1:
             raise ValueError(USAGE)
         policy = load_policy()

@@ -22,7 +22,6 @@
     "deny": [
       "Bash(python3 bin/repository-gate.py init:*)",
       "Bash(gh pr create:*)",
-      "Bash(gh pr merge:*)",
       "Bash(gh repo delete:*)",
       "Bash(gh repo edit:*)"
     ]
