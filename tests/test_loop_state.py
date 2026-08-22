@@ -28,10 +28,16 @@ class LoopStateTest(unittest.TestCase):
         state = root / ".loops"
         state.mkdir()
         self.readme = root / "README.md"
+        # Mirrors the real README: credits sit below the intro, between it and
+        # the first heading. The old fixture had nothing there, which is why the
+        # renderer could eat that span unnoticed.
+        self.credits = "Shoutout to [@somebody] for the best music video of the year"
         self.readme.write_text(
             "# Shoggoth Interceptor\n\nquote\n\n"
-            f"{self.shoggoth.README_VIDEO_URL}\n\n"
-            "old intro\n\n## Pieces\n\nbody\n"
+            "<!-- intro:start -->\n\nold intro\n\n<!-- intro:end -->\n\n"
+            f"<div align=\"center\">\n  <video src=\"{self.shoggoth.README_VIDEO_URL}\"></video>\n\n"
+            f"  {self.credits}\n</div>\n\n"
+            "## Pieces\n\nbody\n"
         )
         self.loop_state = state / "loop.json"
         self.loop_state.write_text('{"completed_loops": 4}\n')
@@ -62,6 +68,28 @@ class LoopStateTest(unittest.TestCase):
         self.assertIn(self.shoggoth.README_INTRO, plain_readme)
         self.assertIn(self.shoggoth.README_VIDEO_URL, plain_readme)
         self.assertIn("\n## Pieces\n", plain_readme)
+
+    def test_completion_keeps_everything_below_the_intro(self):
+        """The renderer must replace the intro only.
+
+        It used to replace everything between the video URL and the first
+        heading, so the closing tag, the credits and the quote sitting there
+        were destroyed the next time a loop completed.
+        """
+        with contextlib.redirect_stdout(io.StringIO()):
+            self.shoggoth.complete_loop(5)
+
+        readme = self.readme.read_text()
+        self.assertIn(self.credits, readme)
+        self.assertIn("</video>", readme)
+        self.assertIn("</div>", readme)
+        self.assertIn("\n## Pieces\n", readme)
+        self.assertEqual(readme.count(self.shoggoth.README_VIDEO_URL), 1)
+
+    def test_missing_intro_markers_fail_closed(self):
+        self.readme.write_text("# Shoggoth Interceptor\n\nno markers here\n\n## Pieces\n")
+        with self.assertRaisesRegex(SystemExit, "README structure not recognised"):
+            self.shoggoth.complete_loop(5)
 
     def test_repeated_completion_is_idempotent_and_silent(self):
         original = self.readme.read_text()

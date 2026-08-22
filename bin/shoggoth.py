@@ -33,6 +33,8 @@ LOOP_STATE = STATE / "loop.json"
 CONFIG = ROOT / "config" / "resolver.json"
 README = ROOT / "README.md"
 README_VIDEO_URL = "https://github.com/user-attachments/assets/87e15a1f-874d-4150-88bf-e6063cb20a2a"
+README_INTRO_START = "<!-- intro:start -->"
+README_INTRO_END = "<!-- intro:end -->"
 REPO = "wildcat-finance/product"  # legacy state compatibility only
 API = "https://api.github.com"
 ZENHUB_API = "https://api.zenhub.com/public/graphql"
@@ -472,14 +474,17 @@ def render_readme_intro(number: int):
     module = importlib.util.module_from_spec(spec)
     spec.loader.exec_module(module)
     content = README.read_text(encoding="utf-8")
-    video = content.find(README_VIDEO_URL)
-    section = content.find("\n## ")
-    if not content.startswith("# Shoggoth Interceptor\n") or video == -1 or section == -1 or video > section:
+    # Anchored on explicit markers rather than "everything between the video and
+    # the first heading". That older span was whatever happened to sit there, so
+    # anything added below the video — the closing tag, the credits, a quote —
+    # was replaced by the intro and lost.
+    start = content.find(README_INTRO_START)
+    end = content.find(README_INTRO_END)
+    if not content.startswith("# Shoggoth Interceptor\n") or start == -1 or end == -1 or start > end:
         sys.exit("README structure not recognised")
-    intro_start = video + len(README_VIDEO_URL)
-    prefix = content[:intro_start].rstrip()
+    head = content[:start + len(README_INTRO_START)]
     rendered = module.zalgo(README_INTRO, min(number, 100))
-    atomic_write(README, f"{prefix}\n\n{rendered}\n{content[section:]}")
+    atomic_write(README, f"{head}\n\n{rendered}\n\n{content[end:]}")
 
 
 def complete_loop(number: int):
