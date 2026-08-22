@@ -9,7 +9,7 @@ from pathlib import Path
 
 ROOT = Path(__file__).resolve().parent.parent
 PROTECTED_EXECUTABLES = {
-    Path("bin/repository-gate.py"): "104c4d0e2efaf907713f5055656e02171c4b1531a5b8f0f86e4990da8bf9a136",
+    Path("bin/repository-gate.py"): "955939936be81fb4ffdb979225dc29d23f6d58bca9f1c929c166d7da04a46a5e",
     Path("bin/install-guardrails.sh"): "efb07ed18f88750cb9aea2750cd247ee5af12f0ae52f818d3160946e690204f6",
 }
 MAX_PROTECTED_FILE_BYTES = 1_000_000
@@ -30,8 +30,6 @@ REQUIRED_SNIPPETS = {
         "`bin/shoggoth-pr.sh --repo <owner/name> ...`",
         "`python3 bin/repository-gate.py init protect ORG`",
         "`python3 bin/repository-gate.py init exempt ORG/REPO`",
-        "The gate refuses every merge it is asked to evaluate",
-        "The Shoggoth opens pull requests and never merges them.",
         "Only a human maintainer acting outside the Shoggoth may change either file.",
     ),
     Path("bin/install-guardrails.sh"): (

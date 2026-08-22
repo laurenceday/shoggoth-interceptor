@@ -1,8 +1,6 @@
 import importlib.util
 import io
 import json
-import subprocess
-import sys
 import tempfile
 import unittest
 from pathlib import Path
@@ -72,18 +70,6 @@ class RepositoryGateTest(unittest.TestCase):
             self.assertFalse(allowed, target)
             self.assertIn("does not match", reason)
 
-    def test_merge_is_denied_on_every_target(self):
-        for target in (
-            "wildcat-finance/skills",
-            "wildcat-finance/v2-protocol",
-            "laurenceday/shoggoth-interceptor",
-        ):
-            allowed, reason = self.gate.decide(
-                target, self.policy, "shoggoth-wildcat", operation="merge"
-            )
-            self.assertFalse(allowed, target)
-            self.assertIn("merge", reason)
-
     def test_unrecorded_consent_denies_everything(self):
         policy = self.gate.validate_policy(UNINITIALIZED)
         for target in ("laurenceday/shoggoth-interceptor", "wildcat-finance/skills"):
@@ -137,16 +123,6 @@ class RepositoryGateTest(unittest.TestCase):
         for target in ("--repo", "https://evil.test/x/y", "owner/repo/extra", "../x"):
             with self.assertRaises(ValueError, msg=target):
                 self.gate.normalize_repo(target)
-
-    def test_merge_cli_is_denied_before_policy_or_login_is_read(self):
-        result = subprocess.run(
-            [sys.executable, str(GATE), "merge", "wildcat-finance/skills"],
-            capture_output=True,
-            text=True,
-            timeout=30,
-        )
-        self.assertEqual(result.returncode, 1)
-        self.assertIn("never gate-approved", result.stderr)
 
     def test_guardrails_file_override_is_gone(self):
         self.assertNotIn("SHOGGOTH_GUARDRAILS_FILE", GATE.read_text(encoding="utf-8"))

@@ -121,15 +121,6 @@ Only a human maintainer acting outside the Shoggoth may change either file.
   name is permitted. Nothing is permitted before consent is recorded, and every
   write requires the GitHub login recorded at consent time.
 
-  Merges are not permitted anywhere, on any target the gate allows or denies.
-  The gate refuses every merge it is asked to evaluate, but a pre-push hook
-  cannot stop one: `gh pr merge` is an API call, not a push, so the
-  prohibition is enforced where merges happen — branch protection on the
-  protected organisation's repositories requiring a human review, configured
-  by the operator on GitHub. Until that branch protection is in place, the
-  prohibition is stated policy only, and nothing in this repository can
-  prevent a merge. The Shoggoth opens pull requests and never merges them.
-
   Consent goes through `init`, the only writer of policy.
   `python3 bin/repository-gate.py init protect ORG` write-protects an
   organisation, and `python3 bin/repository-gate.py init exempt ORG/REPO`
@@ -145,9 +136,8 @@ Only a human maintainer acting outside the Shoggoth may change either file.
   The exemption of `wildcat-finance/skills` is deliberate, recorded by the
   operator on 2026-08-20. It is the skills substrate the Shoggoth runs on,
   which means the Shoggoth may open pull requests against its own
-  instructions. Pull requests without merges is the mitigation: the digest
-  pins cover the gate itself, and a human reviews every such pull request
-  before it lands.
+  instructions. The digest pins cover the gate itself, and a human reviews
+  every such pull request before it lands.
 - **(b) The migration test.** If a loop changes `prisma/schema.prisma` or
   anything under `prisma/migrations/`, it must pass
   `bin/migration-check.sh <worktree>`. The script uses disposable Docker

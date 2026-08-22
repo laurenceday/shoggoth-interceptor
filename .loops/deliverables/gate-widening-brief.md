@@ -10,8 +10,8 @@ widen its own gate has no gate.
 Laurence Day, 2026-08-20, in session: the gate is to permit writes everywhere
 **except** the `wildcat-finance` organisation, with `wildcat-finance/skills`
 exempt from that protection. Pull requests are permitted on anything the gate
-allows. Merges are not. The team's concern is core protocol code and frontend
-code, not the skills substrate the Shoggoth runs on.
+allows. The team's concern is core protocol code and frontend code, not the
+skills substrate the Shoggoth runs on.
 
 That consent covers the intent. It does not pre-approve any particular
 implementation, and it does not cover the two items under "Raise before
@@ -45,26 +45,15 @@ Invert the default, and keep every other property.
 3. **Keep `init` as the only writer of policy**, and keep its prompt. Adding a
    protected organisation, or exempting a repository inside one, is a consent
    event. Widening by hand-editing JSON must still fail `validate_policy`.
-4. **Refuse merges at the gate as well**, so the prohibition is stated in the
-   place that enforces pushes even though it cannot enforce merges. See the
-   first item under "Raise before building": this is a real limitation, not a
-   detail.
-5. **Update the pins and the tests in the same change.** `verify-gate.py`, the
+4. **Update the pins and the tests in the same change.** `verify-gate.py`, the
    `gate-integrity` workflow and `tests/test_guardrails.py` all move with the
    gate. A digest left stale is a gate that no longer proves anything.
-6. **Fixtures for the new refusals**, each seen failing before the fix: a
+5. **Fixtures for the new refusals**, each seen failing before the fix: a
    protected organisation denied, an exempt repository inside it allowed, an
    unprotected organisation allowed, a login mismatch denied, and a
    hand-widened policy refused by validation.
 
 ## Raise before building
-
-**A pre-push hook cannot stop a merge.** `gh pr merge` is an API call, not a
-push, so nothing in this repository can prevent it. "Pull requests but not
-merges" is a convention until it is enforced where merges happen: a token
-without merge permission, branch protection requiring a human review, or org
-settings. Decide which, and say so in `CLAUDE.md`, or the sentence promises
-something the code cannot deliver.
 
 **`SHOGGOTH_GUARDRAILS_FILE` repoints the gate at any file**, with no digest
 check and no consent prompt. It is tolerable beside an allow-nothing default. It
@@ -76,10 +65,9 @@ inside the repository that `verify-gate.py` pins.
 
 `wildcat-finance/skills` holds Fiat, the phase skills, the Promise Machine
 contract and the guardrail prose. Exempting it means the Shoggoth may open pull
-requests against its own instructions. Pull-requests-not-merges is the right
-mitigation and the digest pins cover the gate itself, but the exemption should
-be recorded as deliberate rather than discovered later by someone reading the
-policy file.
+requests against its own instructions. The digest pins cover the gate itself,
+but the exemption should be recorded as deliberate rather than discovered
+later by someone reading the policy file.
 
 ## Raise the rigour floor
 

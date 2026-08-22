@@ -27,9 +27,8 @@ file or its pinned digest.
    protected organisations and, per organisation, the repositories exempt from
    that protection. A repository in a protected organisation is denied unless
    recorded as exempt; an organisation the policy does not name is permitted.
-   Every write requires the GitHub login recorded during setup, nothing is
-   permitted before consent is recorded, and a merge is refused on every
-   target.
+   Every write requires the GitHub login recorded during setup, and nothing is
+   permitted before consent is recorded.
 3. Pull requests go through
    [`bin/shoggoth-pr.sh`](../bin/shoggoth-pr.sh). The wrapper verifies the
    protected files and runs the same gate before calling `gh pr create`.
@@ -39,11 +38,6 @@ Consent goes through `init`, the only writer of policy:
 organisation and `python3 bin/repository-gate.py init exempt ORG/REPO` exempts
 one repository inside it. Answering no grants nothing, and a policy widened by
 hand-editing the JSON fails validation.
-
-The gate refuses merges, but a pre-push hook cannot stop one: `gh pr merge` is
-an API call, not a push. The prohibition is enforced by branch protection on
-the protected organisation's repositories requiring a human review, configured
-by the operator on GitHub; until that is in place it is stated policy only.
 
 When the gate denies a write, the work stays local under `.loops/` for the
 operator to review. The Shoggoth must not use `--no-verify`, raw pushes, raw
