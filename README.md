@@ -10,6 +10,11 @@ re̢pos̆itory po̽licy̨ permit̥̂s̺ a pu̲̾ll r̢equ͖est. T̍he͒n it̩ st
 
 The͙ wh̀o̯̲le loòp p̫̯rot̿ocol, incl̀uding th͆e sharp e̼dğes, l̫ives in `CLAUDE.md`.
 
+Calling it `Shog`, `Shoggy`, `Shoggoth`, `Big S`, or `the Goth` addresses both
+the active member and the collective. [`SHOGGOTH.md`](SHOGGOTH.md) records the
+shared identity and the distinction between the collective and its Interceptor
+form.
+
 <div align="center">
   <video src="https://github.com/user-attachments/assets/87e15a1f-874d-4150-88bf-e6063cb20a2a"></video>
   
