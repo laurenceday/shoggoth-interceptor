@@ -27,10 +27,30 @@ REQUIRED_SNIPPETS = {
         "`bin/repository-gate.py`",
         "`bin/install-guardrails.sh`",
         "`bin/install-guardrails.sh <clone>`",
-        "`bin/shoggoth-pr.sh --repo <owner/name> ...`",
+        "`bin/shoggoth-pr.sh --repo <owner/name> --base <base> --head <head> ...`",
         "`python3 bin/repository-gate.py init protect ORG`",
         "`python3 bin/repository-gate.py init exempt ORG/REPO`",
         "Only a human maintainer acting outside the Shoggoth may change either file.",
+        "## Authorship stays with the Shoggoth",
+        "Claude, Codex, ChatGPT, Copilot, and later runtime hosts are transport",
+        "Never share the\nprivate key to avoid this handoff.",
+    ),
+    Path("SHOGGOTH.md"): (
+        "contract=shoggoth-collective/v2",
+        "## Authorship and host provenance",
+        "A human contributor keeps authorship of their own work.",
+    ),
+    Path("docs/guardrails.md"): (
+        "## Authorship boundary",
+        "inspects the exact `--base` to `--head` commit range",
+        "Agent-produced Interceptor commits are authored by Shoggoth.",
+        "contributors retain their own authorship",
+    ),
+    Path("bin/authorship-gate.py"): (
+        'subprocess.Popen(\n        ["git", *argv]',
+        '"rev-list",',
+        '"--format=%an%x00%ae%x00%B"',
+        "uses a runtime host as author",
     ),
     Path("bin/install-guardrails.sh"): (
         # Adjacency, not mere presence: an unguarded verify call is a hook that
@@ -40,6 +60,7 @@ REQUIRED_SNIPPETS = {
     ),
     Path("bin/shoggoth-pr.sh"): (
         '"$ROOT/bin/verify-gate.py"',
+        '"$ROOT/bin/authorship-gate.py" --base "$base" --head "$head"',
         '"$ROOT/bin/repository-gate.py" "$repo"',
         'exec gh pr create "$@"',
     ),
@@ -119,9 +140,12 @@ def verify(root: Path = ROOT) -> list[str]:
     wrapper = contents.get(Path("bin/shoggoth-pr.sh"), "")
     if wrapper:
         verify_at = wrapper.find('"$ROOT/bin/verify-gate.py"')
+        authorship_at = wrapper.find(
+            '"$ROOT/bin/authorship-gate.py" --base "$base" --head "$head"'
+        )
         gate_at = wrapper.find('"$ROOT/bin/repository-gate.py" "$repo"')
         create_at = wrapper.find('exec gh pr create "$@"')
-        if not 0 <= verify_at < gate_at < create_at:
+        if not 0 <= verify_at < authorship_at < gate_at < create_at:
             errors.append("pull-request wrapper does not preserve verifier and gate order")
     return errors
 

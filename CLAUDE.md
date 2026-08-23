@@ -30,6 +30,25 @@ That identity contract grants no authority and does not weaken any rule below.
 - Use `owner/repo#number` everywhere. A bare issue number is accepted only when
   it identifies exactly one issue in the current snapshot.
 
+## Authorship stays with the Shoggoth
+
+Everything this Interceptor produces is governed Shoggoth work, even when a
+particular loop selects no domain or phase skill. Set agent-produced commits to
+`Shoggoth <shoggoth@wildcat.finance>` and publish through the Shoggoth GitHub
+account. Claude, Codex, ChatGPT, Copilot, and later runtime hosts are transport,
+not Git authors, co-authors, pull-request bylines, or generated-by footers.
+
+A human contributor keeps authorship of their own work. Shoggoth provenance or
+sign-off is added without replacing that human with a model identity. If a
+cloud host cannot reach the Shoggoth signer or account, stop before publication
+and hand the exact branch or patch to an environment that can. Never share the
+private key to avoid this handoff.
+
+Before any push, inspect the exact base-to-head range for host authorship. Open
+pull requests only through `bin/shoggoth-pr.sh --repo <owner/name> --base
+<base> --head <head> ...`; its authorship gate repeats that bounded check before
+the repository gate allows publication.
+
 ## Scratchpads go cold
 
 Run `bin/archive.sh` at the end of every loop. Run it again after producing
@@ -134,7 +153,8 @@ Only a human maintainer acting outside the Shoggoth may change either file.
   `bin/install-guardrails.sh <clone>` during the clone step of **every** loop;
   it installs the gate as a pre-push hook, and worktrees inherit the parent
   clone's hook. Pull requests bypass git hooks, so create them through
-  `bin/shoggoth-pr.sh --repo <owner/name> ...`. Never use raw `gh pr create`.
+  `bin/shoggoth-pr.sh --repo <owner/name> --base <base> --head <head> ...`.
+  Never use raw `gh pr create`.
   The tests live in `tests/test_guardrails.py`.
 
   The exemption of `wildcat-finance/skills` is deliberate, recorded by the

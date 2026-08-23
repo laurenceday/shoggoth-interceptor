@@ -62,6 +62,21 @@ class GateIntegrityTest(unittest.TestCase):
             any("required gate reference missing" in error for error in self.verifier.verify(self.root))
         )
 
+    def test_removed_authorship_gate_is_rejected(self):
+        wrapper = self.root / "bin" / "shoggoth-pr.sh"
+        wrapper.write_text(
+            wrapper.read_text().replace(
+                '"$ROOT/bin/authorship-gate.py" --base "$base" --head "$head"\n',
+                "",
+            )
+        )
+        errors = self.verifier.verify(self.root)
+        self.assertTrue(any("required gate reference missing" in error for error in errors))
+        self.assertIn(
+            "pull-request wrapper does not preserve verifier and gate order",
+            errors,
+        )
+
     def test_non_executable_gate_is_rejected(self):
         gate = self.root / Path("bin/repository-gate.py")
         gate.chmod(gate.stat().st_mode & ~stat.S_IXUSR)
