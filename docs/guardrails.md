@@ -15,6 +15,19 @@ workflow checks those hashes and the required references.
 Only a human maintainer acting outside the Shoggoth may change either protected
 file or its pinned digest.
 
+## Authorship boundary
+
+Agent-produced Interceptor commits are authored by Shoggoth. Human
+contributors retain their own authorship and receive Shoggoth provenance or
+sign-off instead of a model byline. Claude, Codex, and other runtime hosts do
+not appear as authors, co-authors, pull-request bylines, or generated-by
+footers.
+
+The pull-request wrapper inspects the exact `--base` to `--head` commit range.
+A cloud host without the Shoggoth signer or account stops before publication
+and hands over the exact branch or patch. The private key is not shared to
+avoid that handoff.
+
 ## Write path
 
 1. Every cloned work repository runs
@@ -31,7 +44,8 @@ file or its pinned digest.
    permitted before consent is recorded.
 3. Pull requests go through
    [`bin/shoggoth-pr.sh`](../bin/shoggoth-pr.sh). The wrapper verifies the
-   protected files and runs the same gate before calling `gh pr create`.
+   protected files, runs the authorship check, and applies the repository gate
+   before calling `gh pr create`.
 
 Consent goes through `init`, the only writer of policy:
 `python3 bin/repository-gate.py init protect ORG` write-protects an

@@ -36,6 +36,10 @@ was... ‘oh, this thing is now in our space’."* - [@Kethic](https://github.co
   `bin/repository-gate.py`, `bin/install-guardrails.sh`, and `bin/shoggoth-pr.sh`
   chain. The gate and its installer are fixed boundaries.
   The Shoggoth may neither change nor bypass either file.
+- `bin/authorship-gate.py` refuses a Claude, Codex, or other known host identity
+  in the exact branch range before the sanctioned pull-request wrapper runs.
+  Human contributors remain authors; agent-produced Interceptor work is
+  Shoggoth work.
 - `bin/migration-check.sh` spins up disposable Docker Postgres, applies every
   Prisma migration from zero, and checks the result against `schema.prisma`.
   Any loop that touches `prisma/` must run it.
